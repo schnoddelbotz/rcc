@@ -1,0 +1,3 @@
+package main
+
+// run go test -cover ...
