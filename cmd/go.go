@@ -1,9 +1,11 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
+	"log"
+	"os"
+	"time"
 
+	"github.com/schnoddelbotz/retrospective-code-coverage/rcc"
 	"github.com/spf13/cobra"
 )
 
@@ -19,8 +21,28 @@ var goCmd = &cobra.Command{
 }
 
 func goCmdRunE(cmd *cobra.Command, args []string) error {
-	fmt.Println("go called")
-	return errors.New("oops")
+	repoPath, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if len(args) > 0 {
+		repoPath = args[0]
+	}
+	log.Printf("go called, repoPath: %s", repoPath)
+	repo, err := rcc.NewSourceRepository(repoPath)
+	if err != nil {
+		return err
+	}
+	commits, err := repo.GetCommits(time.UnixMilli(0), time.Now(), "main")
+	if err != nil {
+		return err
+	}
+	log.Printf("commits: %+v", commits)
+
+	runner := rcc.NewRunner()
+	runner.Run(5, commits)
+
+	return nil
 }
 
 func init() {

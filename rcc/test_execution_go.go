@@ -1,3 +1,3 @@
-package main
+package rcc
 
 // run go test -cover ...

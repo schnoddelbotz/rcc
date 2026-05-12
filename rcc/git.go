@@ -1,0 +1,51 @@
+package rcc
+
+import (
+	"errors"
+	"time"
+
+	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing/object"
+)
+
+type SourceRepository struct {
+	path string
+	repo *git.Repository
+}
+
+func NewSourceRepository(path string) (*SourceRepository, error) {
+	repo, err := git.PlainOpen(path)
+	if err != nil {
+		return nil, err
+	}
+	return &SourceRepository{path: path, repo: repo}, nil
+}
+
+func (repo *SourceRepository) GetCommits(from, to time.Time, branch string) ([]string, error) {
+	// based on: https://github.com/go-git/go-git/blob/main/_examples/log/main.go
+	// get list of commits to process - limit using time range.
+	// list commits within range from any branch by default, or limit to one (or more?).
+	hashes := []string{}
+	ref, err := repo.repo.Head()
+	if err != nil {
+		return hashes, err
+	}
+	// ... retrieves the commit history
+	cIter, err := repo.repo.Log(&git.LogOptions{From: ref.Hash(), Since: &from, Until: &to})
+	if err != nil {
+		return hashes, err
+	}
+	// ... just iterates over the commits, printing it
+	err = cIter.ForEach(func(c *object.Commit) error {
+		hashes = append(hashes, c.Hash.String())
+		return nil
+	})
+	if err != nil {
+		return hashes, err
+	}
+	return hashes, nil
+}
+
+func (repo *SourceRepository) LocalClone(to string) error {
+	return errors.New("LocalClone unimplemented")
+}
