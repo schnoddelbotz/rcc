@@ -41,24 +41,35 @@ func (r *Runner) Run(workers int, hashes []string) {
 	}
 
 	sd := statData{}
+	done := make(chan struct{})
 	go func() {
 		for res := range r.resultQueue {
 			sd.entries = append(sd.entries, res)
 		}
+		close(done)
 	}()
 
 	tmpDir, err := os.MkdirTemp(os.TempDir(), "rcc")
 	if err != nil {
 		panic(err)
 	}
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			log.Printf("failed to remove %s", tmpDir)
+		}
+		log.Printf("cleaned %s", tmpDir)
+	}()
+
 	for _, h := range hashes {
 		clonePath := filepath.Join(tmpDir, h)
 		r.jobInputQueue <- job{hash: h, runColoc: false, repo: r.repo, clonePath: clonePath}
 	}
 	close(r.jobInputQueue)
 	wg.Wait()
+	close(r.resultQueue)
+	<-done
 
-	// sd.sort()
+	sd.sort()
 	for _, s := range sd.entries {
 		log.Printf("RES %+v", s)
 	}
@@ -66,9 +77,6 @@ func (r *Runner) Run(workers int, hashes []string) {
 		log.Printf("LANG %+s", l)
 	}
 
-	if err := os.RemoveAll(tmpDir); err != nil {
-		log.Printf("failed to remove %s", tmpDir)
-	}
 }
 
 func worker(id int, jobs <-chan job, results chan<- statDataEntry) {
