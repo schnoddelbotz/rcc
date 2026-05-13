@@ -1,10 +1,10 @@
 package rcc
 
 import (
-	"errors"
 	"time"
 
 	"github.com/go-git/go-git/v6"
+	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/object"
 )
 
@@ -46,6 +46,23 @@ func (repo *SourceRepository) GetCommits(from, to time.Time, branch string) ([]s
 	return hashes, nil
 }
 
-func (repo *SourceRepository) LocalClone(to string) error {
-	return errors.New("LocalClone unimplemented")
+func (repo *SourceRepository) LocalClone(to, hash string) error {
+	r, err := git.PlainClone(to, &git.CloneOptions{
+		URL:               repo.path,
+		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
+	})
+	if err != nil {
+		return err
+	}
+	w, err := r.Worktree()
+	if err != nil {
+		return err
+	}
+	err = w.Checkout(&git.CheckoutOptions{
+		Hash: plumbing.NewHash(hash),
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -39,7 +39,7 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 	}
 	log.Printf("commits: %+v", commits)
 
-	runner := rcc.NewRunner()
+	runner := rcc.NewRunner(repo)
 	runner.Run(5, commits)
 
 	return nil
