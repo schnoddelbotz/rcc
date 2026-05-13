@@ -35,11 +35,10 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	commits, err := repo.GetCommits(time.UnixMilli(0), time.Now(), "main")
+	commits, err := repo.GetCommits(time.UnixMilli(0), time.Now(), "main") // FIXME branch / all
 	if err != nil {
 		return err
 	}
-	log.Printf("commits: %d", len(commits))
 
 	runner := rcc.NewRunner(repo)
 	runner.Run(workers, commits)
