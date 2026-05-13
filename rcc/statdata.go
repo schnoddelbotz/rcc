@@ -3,17 +3,20 @@ package rcc
 import (
 	"slices"
 	"time"
+
+	"github.com/hhatto/gocloc"
 )
 
 type statData struct {
 	entries []statDataEntry
 }
-type locData map[string]uint
+
+// type locData map[string]uint
 
 type statDataEntry struct {
 	sha      string
 	date     time.Time
-	loc      map[string]uint
+	loc      *gocloc.Result
 	coverage float32
 	duration time.Duration
 }
@@ -27,7 +30,7 @@ func (sd *statData) sort() {
 func (sd *statData) languages() []string {
 	langMap := map[string]bool{}
 	for _, entry := range sd.entries {
-		for lang := range entry.loc {
+		for lang := range entry.loc.Languages {
 			langMap[lang] = true
 		}
 	}

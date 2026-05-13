@@ -46,23 +46,40 @@ func (repo *SourceRepository) GetCommits(from, to time.Time, branch string) ([]s
 	return hashes, nil
 }
 
-func (repo *SourceRepository) LocalClone(to, hash string) error {
+func (repo *SourceRepository) LocalClone(to, hash string) (time.Time, error) {
+	var commitTime time.Time
 	r, err := git.PlainClone(to, &git.CloneOptions{
 		URL:               repo.path,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 	})
 	if err != nil {
-		return err
+		return commitTime, err
 	}
+	defer func() { _ = r.Close() }()
+
 	w, err := r.Worktree()
 	if err != nil {
-		return err
+		return commitTime, err
 	}
 	err = w.Checkout(&git.CheckoutOptions{
 		Hash: plumbing.NewHash(hash),
 	})
 	if err != nil {
-		return err
+		return commitTime, err
 	}
-	return nil
+
+	head, err := r.Head()
+	if err != nil {
+		return commitTime, err
+	}
+	logi, err := r.Log(&git.LogOptions{From: head.Hash()}) // To: head.Hash()
+	if err != nil {
+		return commitTime, err
+	}
+	loge, err := logi.Next()
+	if err != nil {
+		return commitTime, err
+	}
+
+	return loge.Committer.When, nil
 }

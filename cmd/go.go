@@ -21,6 +21,8 @@ var goCmd = &cobra.Command{
 }
 
 func goCmdRunE(cmd *cobra.Command, args []string) error {
+	workers, _ := cmd.Flags().GetInt("workers")
+
 	repoPath, err := os.Getwd()
 	if err != nil {
 		return err
@@ -37,10 +39,10 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("commits: %+v", commits)
+	log.Printf("commits: %d", len(commits))
 
 	runner := rcc.NewRunner(repo)
-	runner.Run(5, commits)
+	runner.Run(workers, commits)
 
 	return nil
 }
