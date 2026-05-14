@@ -16,7 +16,7 @@ type Runner struct {
 	jobInputQueue chan job
 	resultQueue   chan statDataEntry
 	repo          *SourceRepository
-	statData      *statData
+	StatData      *statData
 	jobsDone      atomic.Uint32
 	tmpDir        string
 	wg            sync.WaitGroup
@@ -70,7 +70,7 @@ func (runner *Runner) Run(workers int, hashes []string) {
 	<-runner.done
 
 	runner.sd.sort()
-	runner.statData = &runner.sd
+	runner.StatData = &runner.sd
 }
 
 func (runner *Runner) startBackgroundWorkers(workers int, hashes []string) {

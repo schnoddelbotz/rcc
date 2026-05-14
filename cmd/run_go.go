@@ -40,7 +40,13 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	rcc.NewRunner(repo).Run(workers, commits)
+	runner := rcc.NewRunner(repo)
+	runner.Run(workers, commits)
+
+	err = rcc.GraphGnuplot(runner.StatData, "/tmp/my.png")
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
