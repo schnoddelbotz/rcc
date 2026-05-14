@@ -14,14 +14,14 @@ import (
 
 type Runner struct {
 	jobInputQueue chan job
-	resultQueue   chan statDataEntry
+	resultQueue   chan StatDataEntry
 	repo          *SourceRepository
-	StatData      *statData
+	StatData      *StatData
 	jobsDone      atomic.Uint32
 	tmpDir        string
 	wg            sync.WaitGroup
 	done          chan struct{}
-	sd            statData
+	sd            StatData
 }
 
 type job struct {
@@ -36,7 +36,7 @@ func NewRunner(repo *SourceRepository) *Runner {
 	return &Runner{
 		repo:          repo,
 		jobInputQueue: make(chan job),
-		resultQueue:   make(chan statDataEntry),
+		resultQueue:   make(chan StatDataEntry),
 		done:          make(chan struct{}),
 	}
 }
@@ -76,7 +76,7 @@ func (runner *Runner) Run(workers int, hashes []string) {
 func (runner *Runner) startBackgroundWorkers(workers int, hashes []string) {
 	for range workers {
 		runner.wg.Go(func() {
-			runner.startJobProcessor()
+			runner.startJobInputQueueWorker()
 		})
 	}
 
@@ -97,7 +97,7 @@ func (runner *Runner) startBackgroundWorkers(workers int, hashes []string) {
 	}()
 }
 
-func (runner *Runner) startJobProcessor() {
+func (runner *Runner) startJobInputQueueWorker() {
 	for job := range runner.jobInputQueue {
 		// clone to clonePath with given hash
 		clonePath := filepath.Join(runner.tmpDir, job.hash)
@@ -123,10 +123,10 @@ func (runner *Runner) startJobProcessor() {
 			log.Printf("failed to remove clone %s", clonePath)
 		}
 
-		runner.resultQueue <- statDataEntry{ /* add loc, add cov*/
-			date:     commitTime,
-			coverage: 10.0,
-			loc:      loc,
+		runner.resultQueue <- StatDataEntry{ /* add loc, add cov*/
+			Date:     commitTime,
+			Coverage: 10.0,
+			Loc:      loc,
 			sha:      job.hash,
 		}
 	}

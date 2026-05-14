@@ -7,30 +7,30 @@ import (
 	"github.com/hhatto/gocloc"
 )
 
-type statData struct {
-	entries []statDataEntry
+type StatData struct {
+	entries []StatDataEntry
 }
 
 // type locData map[string]uint
 
-type statDataEntry struct {
+type StatDataEntry struct {
 	sha      string
-	date     time.Time
-	loc      *gocloc.Result
-	coverage float32
-	duration time.Duration
+	Date     time.Time
+	Loc      *gocloc.Result
+	Coverage float32
+	Duration time.Duration
 }
 
-func (sd *statData) sort() {
-	slices.SortFunc(sd.entries, func(a, b statDataEntry) int {
-		return a.date.Compare(b.date)
+func (sd *StatData) sort() {
+	slices.SortFunc(sd.entries, func(a, b StatDataEntry) int {
+		return a.Date.Compare(b.Date)
 	})
 }
 
-func (sd *statData) languages() []string {
+func (sd *StatData) languages() []string {
 	langMap := map[string]bool{}
 	for _, entry := range sd.entries {
-		for lang := range entry.loc.Languages {
+		for lang := range entry.Loc.Languages {
 			langMap[lang] = true
 		}
 	}
@@ -42,13 +42,13 @@ func (sd *statData) languages() []string {
 	return result
 }
 
-func processCommits(parallel uint8, repoPath, shas []string, runLoc, runCov bool) (*statData, error) {
-	s := statData{}
+func processCommits(parallel uint8, repoPath, shas []string, runLoc, runCov bool) (*StatData, error) {
+	s := StatData{}
 	// wg.wait
 	return &s, nil
 }
 
-func processCommit(repoPath, sha string, runLoc, runCov bool) (statDataEntry, error) {
-	s := statDataEntry{}
+func processCommit(repoPath, sha string, runLoc, runCov bool) (StatDataEntry, error) {
+	s := StatDataEntry{}
 	return s, nil
 }

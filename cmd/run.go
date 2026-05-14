@@ -40,6 +40,7 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	runCmd.PersistentFlags().IntP("workers", "w", 5, "Number of workers")
+	runCmd.PersistentFlags().StringP("output", "o", "rcc-output.png", "Plot/Graph PNG output filename")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

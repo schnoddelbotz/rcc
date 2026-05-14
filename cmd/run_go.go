@@ -22,6 +22,7 @@ var goCmd = &cobra.Command{
 
 func goCmdRunE(cmd *cobra.Command, args []string) error {
 	workers, _ := cmd.Flags().GetInt("workers")
+	outfile, _ := cmd.Flags().GetString("output")
 
 	repoPath, err := os.Getwd()
 	if err != nil {
@@ -43,24 +44,15 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 	runner := rcc.NewRunner(repo)
 	runner.Run(workers, commits)
 
-	err = rcc.GraphGnuplot(runner.StatData, "/tmp/my.png")
+	err = rcc.GraphGnuplot(runner.StatData, outfile)
 	if err != nil {
 		return err
 	}
 
+	log.Printf("Graph successfully written to: %s", outfile)
 	return nil
 }
 
 func init() {
 	runCmd.AddCommand(goCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// goCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// goCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

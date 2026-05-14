@@ -9,9 +9,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"text/template"
+	"time"
+
+	"github.com/hhatto/gocloc"
 )
 
-func GraphGnuplot(graphData *statData, outfile string) error {
+func GraphGnuplot(graphData *StatData, outfile string) error {
 	tmpdir, err := os.MkdirTemp(os.TempDir(), "rcc-gp")
 	if err != nil {
 		return err
@@ -27,6 +30,11 @@ func GraphGnuplot(graphData *statData, outfile string) error {
 		return err
 	}
 
+	/////
+	// dat, _ := os.ReadFile(datafile)
+	// fmt.Print(string(dat))
+	/////
+
 	script := gnuplotCreateScript(graphData, datafile, outfile)
 
 	err = gnuplotExec(script)
@@ -37,16 +45,55 @@ func GraphGnuplot(graphData *statData, outfile string) error {
 	return nil
 }
 
-func gnuplotWriteData(sd *statData, datafile string) error {
-	/*
-	   2025-07-10T13:54:29+02:00 4204 3856 868 910 1590 10.9
-	   2025-07-10T13:53:26+02:00 4205 3857 868 910 1590 12.4
-	   2025-07-10T13:48:30+02:00 4205 3857 868 910 1585 12.4
-	*/
+func gnuplotWriteData(sd *StatData, datafile string) error {
+	datTpl := `# date                    {{range .Languages}}{{.}} {{end}}coverage coverage_integration
+        {{- range .Entries }}
+{{formatDate .Date}} {{locCols .Loc}}
+        {{- end }}
+`
+	type tplData struct {
+		Entries   []StatDataEntry
+		Languages []string
+	}
+	var funcMap = template.FuncMap{
+		"formatDate": func(timeStamp time.Time) string {
+			//Define layout for formatting timestamp to string
+			return timeStamp.Format(time.RFC3339Nano)
+		},
+		"locCols": func(loc *gocloc.Result) string {
+			outline := ""
+			// range over all languages in data set. if entry lacks lang, 0-fill gap.
+			for _, l := range sd.languages() {
+				if lang, exists := loc.Languages[l]; exists {
+					outline += fmt.Sprintf("%d ", lang.Code)
+				} else {
+					outline += "0 "
+				}
+			}
+			// HACK HACK
+			outline += "5 5 5 5 5 5"
+			return outline
+		},
+	}
+	tpl := template.Must(template.New("gnuplot").Funcs(funcMap).Parse(datTpl))
+
+	fh, err := os.Create(datafile)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+
+	err = tpl.Execute(fh, tplData{
+		Languages: sd.languages(),
+		Entries:   sd.entries,
+	})
+	if err != nil {
+		panic(err)
+	}
 	return nil
 }
 
-func gnuplotCreateScript(sd *statData, datafile, outfile string) string {
+func gnuplotCreateScript(sd *StatData, datafile, outfile string) string {
 	scriptTpl := `set title '{{.}}'
         set xlabel 'Date'
         set timefmt "%Y-%m-%dT%H:%M:%S+02:00"
