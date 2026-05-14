@@ -18,11 +18,13 @@ type Runner struct {
 	repo          *SourceRepository
 	statData      *statData
 	jobsDone      atomic.Uint32
+	tmpDir        string
+	wg            sync.WaitGroup
+	done          chan struct{}
+	sd            statData
 }
 
 type job struct {
-	repo                *SourceRepository
-	clonePath           string
 	hash                string
 	runColoc            bool
 	runColocNoTests     bool
@@ -35,72 +37,71 @@ func NewRunner(repo *SourceRepository) *Runner {
 		repo:          repo,
 		jobInputQueue: make(chan job),
 		resultQueue:   make(chan statDataEntry),
+		done:          make(chan struct{}),
 	}
 }
 
-func (r *Runner) Run(workers int, hashes []string) {
-	var wg sync.WaitGroup
-	for w := 1; w <= workers; w++ {
-		wg.Go(func() {
-			worker(w, r.jobInputQueue, r.resultQueue)
-			// log.Printf("Worker %d quit", w)
-		})
-	}
-
-	sd := statData{}
-	done := make(chan struct{})
-	go func() {
-		for res := range r.resultQueue {
-			sd.entries = append(sd.entries, res)
-			r.jobsDone.Add(1)
-		}
-		close(done)
-	}()
-	go func() {
-		for r.jobsDone.Load() != uint32(len(hashes)) {
-			time.Sleep(200 * time.Millisecond)
-			fmt.Printf("Processed %d of %d\r", r.jobsDone.Load(), len(hashes))
-		}
-		log.Printf("Finished processing %d commits", len(hashes))
-	}()
-
-	tmpDir, err := os.MkdirTemp(os.TempDir(), "rcc")
+func (runner *Runner) Run(workers int, hashes []string) {
+	var err error
+	// create tmpDir root, shared by all workers
+	runner.tmpDir, err = os.MkdirTemp(os.TempDir(), "rcc")
 	if err != nil {
 		panic(err)
 	}
 	defer func() {
 		// log.Printf("removing %s", tmpDir)
-		if err := os.RemoveAll(tmpDir); err != nil {
-			log.Printf("failed to remove %s", tmpDir)
+		if err := os.RemoveAll(runner.tmpDir); err != nil {
+			log.Printf("failed to remove %s", runner.tmpDir)
 		}
 		// log.Printf("removed  %s", tmpDir)
 	}()
 
+	// start workers consuming jobInputQueue
+	runner.startBackgroundWorkers(workers, hashes)
+	// feed jobs to jobInputQueue
 	for _, h := range hashes {
-		clonePath := filepath.Join(tmpDir, h)
-		r.jobInputQueue <- job{hash: h, runColoc: true, repo: r.repo, clonePath: clonePath}
+		runner.jobInputQueue <- job{hash: h, runColoc: true}
 	}
 
-	close(r.jobInputQueue)
-	wg.Wait()
-	close(r.resultQueue)
-	<-done
+	// wait for all workers to complete
+	close(runner.jobInputQueue)
+	runner.wg.Wait()
+	close(runner.resultQueue)
+	<-runner.done
 
-	sd.sort()
-	// for _, s := range sd.entries {
-	// 	log.Printf("RES %+v", s)
-	// }
-	for _, l := range sd.languages() {
-		log.Printf("LANG %+s", l)
-	}
-	r.statData = &sd
+	runner.sd.sort()
+	runner.statData = &runner.sd
 }
 
-func worker(id int, jobs <-chan job, results chan<- statDataEntry) {
-	for job := range jobs {
-		// log.Printf("worker %02d, hash %s, wd %s", id, job.hash, job.clonePath)
+func (runner *Runner) startBackgroundWorkers(workers int, hashes []string) {
+	for range workers {
+		runner.wg.Go(func() {
+			runner.startJobProcessor()
+		})
+	}
+
+	go func() {
+		for res := range runner.resultQueue {
+			runner.sd.entries = append(runner.sd.entries, res)
+			runner.jobsDone.Add(1)
+		}
+		close(runner.done)
+	}()
+
+	go func() {
+		for runner.jobsDone.Load() != uint32(len(hashes)) {
+			time.Sleep(200 * time.Millisecond)
+			fmt.Printf("Processed %d of %d\r", runner.jobsDone.Load(), len(hashes))
+		}
+		log.Printf("Finished processing %d commits", len(hashes))
+	}()
+}
+
+func (runner *Runner) startJobProcessor() {
+	for job := range runner.jobInputQueue {
 		// clone to clonePath with given hash
-		commitTime, err := job.repo.LocalClone(job.clonePath, job.hash)
+		clonePath := filepath.Join(runner.tmpDir, job.hash)
+		commitTime, err := runner.repo.LocalClone(clonePath, job.hash)
 		if err != nil {
 			log.Printf("failed to clone: %s", err)
 			continue
@@ -110,7 +111,7 @@ func worker(id int, jobs <-chan job, results chan<- statDataEntry) {
 		if job.runColoc {
 			languages := gocloc.NewDefinedLanguages() // HERE ?!?!?
 			clocOpts := gocloc.NewClocOptions()       // HERE ?!?!
-			loc, err = getLoc(languages, clocOpts, []string{job.clonePath})
+			loc, err = getLoc(languages, clocOpts, []string{clonePath})
 			if err != nil {
 				log.Printf("gocoloc failed: %s", err)
 				continue
@@ -118,11 +119,11 @@ func worker(id int, jobs <-chan job, results chan<- statDataEntry) {
 			// log.Printf("LOC: %v", loc.Languages["Go"])
 		}
 
-		if err := os.RemoveAll(job.clonePath); err != nil {
-			log.Printf("failed to remove clone %s", job.clonePath)
+		if err := os.RemoveAll(clonePath); err != nil {
+			log.Printf("failed to remove clone %s", clonePath)
 		}
 
-		results <- statDataEntry{ /* add loc, add cov*/
+		runner.resultQueue <- statDataEntry{ /* add loc, add cov*/
 			date:     commitTime,
 			coverage: 10.0,
 			loc:      loc,

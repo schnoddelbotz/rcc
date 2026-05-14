@@ -30,7 +30,7 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		repoPath = args[0]
 	}
-	log.Printf("go called, repoPath: %s", repoPath)
+	log.Printf("go called, %d workers, repoPath: %s", workers, repoPath)
 	repo, err := rcc.NewSourceRepository(repoPath)
 	if err != nil {
 		return err
@@ -40,8 +40,7 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	runner := rcc.NewRunner(repo)
-	runner.Run(workers, commits)
+	rcc.NewRunner(repo).Run(workers, commits)
 
 	return nil
 }
