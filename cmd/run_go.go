@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/schnoddelbotz/retrospective-code-coverage/rcc"
@@ -23,6 +25,7 @@ var goCmd = &cobra.Command{
 func goCmdRunE(cmd *cobra.Command, args []string) error {
 	workers, _ := cmd.Flags().GetInt("workers")
 	outfile, _ := cmd.Flags().GetString("output")
+	debug, _ := cmd.Flags().GetBool("debug")
 
 	repoPath, err := os.Getwd()
 	if err != nil {
@@ -44,7 +47,8 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 	runner := rcc.NewRunner(repo, "Go")
 	runner.Run(workers, commits)
 
-	err = rcc.GraphGnuplot(runner.StatData, outfile)
+	title := fmt.Sprintf("%s [%s]", filepath.Base(repoPath), "Go")
+	err = rcc.NewGnuplotGraph(runner.StatData, title, outfile, "Go", debug).Create()
 	if err != nil {
 		return err
 	}

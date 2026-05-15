@@ -41,7 +41,7 @@ func init() {
 	// and all subcommands, e.g.:
 	runCmd.PersistentFlags().IntP("workers", "w", 5, "Number of workers")
 	runCmd.PersistentFlags().StringP("output", "o", "rcc-output.png", "Plot/Graph PNG output filename")
-
+	runCmd.PersistentFlags().BoolP("debug", "d", false, "enable debug output")
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// runCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")

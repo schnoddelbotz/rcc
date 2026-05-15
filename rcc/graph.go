@@ -8,13 +8,32 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
 	"github.com/hhatto/gocloc"
 )
 
-func GraphGnuplot(graphData *StatData, outfile string) error {
+type GnuplotGraph struct {
+	graphData *StatData
+	outfile   string
+	language  string
+	debug     bool
+	title     string
+}
+
+func NewGnuplotGraph(graphData *StatData, title, outfile, language string, debug bool) *GnuplotGraph {
+	return &GnuplotGraph{
+		graphData: graphData,
+		outfile:   outfile,
+		language:  language,
+		debug:     debug,
+		title:     title,
+	}
+}
+
+func (g *GnuplotGraph) Create() error {
 	tmpdir, err := os.MkdirTemp(os.TempDir(), "rcc-gp")
 	if err != nil {
 		return err
@@ -25,17 +44,18 @@ func GraphGnuplot(graphData *StatData, outfile string) error {
 	}()
 	datafile := filepath.Join(tmpdir, "rcc-gc.dat")
 
-	err = gnuplotWriteData(graphData, datafile)
+	err = g.gnuplotWriteData(datafile)
 	if err != nil {
 		return err
 	}
 
-	/////
-	// dat, _ := os.ReadFile(datafile)
-	// fmt.Print(string(dat))
-	/////
+	script := g.gnuplotCreateScript(datafile)
 
-	script := gnuplotCreateScript(graphData, datafile, outfile)
+	if g.debug {
+		dat, _ := os.ReadFile(datafile)
+		fmt.Println(string(dat))
+		fmt.Println(script)
+	}
 
 	err = gnuplotExec(script)
 	if err != nil {
@@ -45,8 +65,21 @@ func GraphGnuplot(graphData *StatData, outfile string) error {
 	return nil
 }
 
-func gnuplotWriteData(sd *StatData, datafile string) error {
-	datTpl := `# date                    {{range .Languages}}{{.}} {{end}}coverage coverage_integration
+func getColNames(lang string, languages []string) []string {
+	res := []string{}
+	for _, l := range languages {
+		if l == lang {
+			res = append(res, l+"Code")
+			res = append(res, l+"Comments")
+			continue
+		}
+		res = append(res, l)
+	}
+	return res
+}
+
+func (g *GnuplotGraph) gnuplotWriteData(datafile string) error {
+	datTpl := `# date                    {{locHeaderLangs}} coverage coverage_integration
         {{- range .Entries }}
 {{formatDate .Date}} {{locCols .Loc}}
         {{- end }}
@@ -59,10 +92,29 @@ func gnuplotWriteData(sd *StatData, datafile string) error {
 		"formatDate": func(timeStamp time.Time) string {
 			return timeStamp.Format(time.RFC3339Nano)
 		},
+		"locHeaderLangs": func() string {
+			return strings.Join(getColNames(g.language, g.graphData.languages()), " ")
+		},
 		"locCols": func(loc *gocloc.Result) string {
 			outline := ""
 			// range over all languages in data set. if entry lacks lang, 0-fill gap.
-			for _, l := range sd.languages() {
+			for _, l := range g.graphData.languages() {
+				if l == g.language {
+					if lang, exists := loc.Languages[l]; exists {
+						outline += fmt.Sprintf("%d %d ", lang.Code, lang.Comments)
+					} else {
+						outline += "0 0 "
+					}
+					continue
+				}
+				if l == g.language+"Tests" {
+					if lang, exists := loc.Languages[l]; exists {
+						outline += fmt.Sprintf("%d ", lang.Code)
+					} else {
+						outline += "0 "
+					}
+					continue
+				}
 				if lang, exists := loc.Languages[l]; exists {
 					outline += fmt.Sprintf("%d ", lang.Code)
 				} else {
@@ -70,7 +122,7 @@ func gnuplotWriteData(sd *StatData, datafile string) error {
 				}
 			}
 			// HACK HACK
-			outline += "5 5 5 5 5 5"
+			//outline += "5 5 5 5 5 5"
 			return outline
 		},
 	}
@@ -83,8 +135,8 @@ func gnuplotWriteData(sd *StatData, datafile string) error {
 	defer fh.Close()
 
 	err = tpl.Execute(fh, tplData{
-		Languages: sd.languages(),
-		Entries:   sd.entries,
+		Languages: g.graphData.languages(),
+		Entries:   g.graphData.entries,
 	})
 	if err != nil {
 		panic(err)
@@ -92,8 +144,8 @@ func gnuplotWriteData(sd *StatData, datafile string) error {
 	return nil
 }
 
-func gnuplotCreateScript(sd *StatData, datafile, outfile string) string {
-	scriptTpl := `set title '{{.}}'
+func (g *GnuplotGraph) gnuplotCreateScript(datafile string) string {
+	scriptTpl := `set title '{{.Title}}'
         set xlabel 'Date'
         set timefmt "%Y-%m-%dT%H:%M:%S+02:00"
         set xdata time
@@ -105,28 +157,39 @@ func gnuplotCreateScript(sd *StatData, datafile, outfile string) string {
         set term pngcairo
         set terminal png size 1024,768
         set output "{{.OutFile}}"
-        plot '{{.DataFile}}' using 1:2 t 'Go, including tests' with linespoints, \
-             '{{.DataFile}}' using 1:3 t 'Go, excluding tests' with linespoints, \
-             '{{.DataFile}}' using 1:4 t 'HTML' with linespoints, \
-             '{{.DataFile}}' using 1:5 t 'JS' with linespoints, \
-             '{{.DataFile}}' using 1:6 t 'PS1' with linespoints, \
-             '{{.DataFile}}' using 1:7 t 'Coverage' axis x1y2 with linespoints`
+        plot {{plotArgs}}
+`
 
-	tpl := template.Must(template.New("gnuplot").Parse(scriptTpl))
+	var funcMap = template.FuncMap{
+		"plotArgs": func() string {
+			res := ""
+			plotArgFmt := `'%s' using 1:%d t '%s' with linespoints`
+			colNames := getColNames(g.language, g.graphData.languages())
+			for column, lang := range colNames {
+				res += fmt.Sprintf(plotArgFmt, datafile, column+2, lang)
+				if column+1 < len(colNames) {
+					res += ", \\\n"
+				}
+			}
+			return res
+		},
+	}
+
+	tpl := template.Must(template.New("gnuplot").Funcs(funcMap).Parse(scriptTpl))
 
 	type tplData struct {
-		DataFile  string
-		OutFile   string
-		Title     string
-		Languages []string
+		// DataFile  string
+		OutFile string
+		Title   string
+		// Languages []string
 	}
 
 	buf := bytes.NewBuffer([]byte(``))
 	err := tpl.Execute(buf, tplData{
-		DataFile:  datafile,
-		OutFile:   outfile,
-		Languages: sd.languages(),
-		Title:     "foo",
+		// DataFile:  datafile,
+		OutFile: g.outfile,
+		// Languages: g.graphData.languages(),
+		Title: g.title,
 	})
 	if err != nil {
 		panic(err)
