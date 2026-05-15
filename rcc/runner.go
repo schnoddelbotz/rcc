@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,6 +23,7 @@ type Runner struct {
 	wg            sync.WaitGroup
 	done          chan struct{}
 	sd            StatData
+	language      string
 }
 
 type job struct {
@@ -32,12 +34,13 @@ type job struct {
 	runCoverIntegration bool
 }
 
-func NewRunner(repo *SourceRepository) *Runner {
+func NewRunner(repo *SourceRepository, language string) *Runner {
 	return &Runner{
 		repo:          repo,
 		jobInputQueue: make(chan job),
 		resultQueue:   make(chan StatDataEntry),
 		done:          make(chan struct{}),
+		language:      language,
 	}
 }
 
@@ -49,11 +52,9 @@ func (runner *Runner) Run(workers int, hashes []string) {
 		panic(err)
 	}
 	defer func() {
-		// log.Printf("removing %s", tmpDir)
 		if err := os.RemoveAll(runner.tmpDir); err != nil {
 			log.Printf("failed to remove %s", runner.tmpDir)
 		}
-		// log.Printf("removed  %s", tmpDir)
 	}()
 
 	// start workers consuming jobInputQueue
@@ -116,7 +117,21 @@ func (runner *Runner) startJobInputQueueWorker() {
 				log.Printf("gocoloc failed: %s", err)
 				continue
 			}
-			// log.Printf("LOC: %v", loc.Languages["Go"])
+
+			// second run for tests - only target language's test files
+			clocOpts.IncludeLangs[runner.language] = struct{}{}
+			clocOpts.ReMatch = regexp.MustCompile(languageTestfilesReMap[runner.language])
+			loc2, err := getLoc(languages, clocOpts, []string{clonePath})
+			if err != nil {
+				log.Printf("gocoloc for tests failed: %s", err)
+				continue
+			}
+			if testLoc, exists := loc2.Languages[runner.language]; exists {
+				// log.Printf("LOC2: %v", testLoc.Code)
+				loc.Languages[runner.language+"Tests"] = testLoc
+			}
+
+			// log.Printf("LOC: %v", loc.Languages)
 		}
 
 		if err := os.RemoveAll(clonePath); err != nil {
@@ -130,4 +145,8 @@ func (runner *Runner) startJobInputQueueWorker() {
 			sha:      job.hash,
 		}
 	}
+}
+
+var languageTestfilesReMap = map[string]string{
+	"Go": ".*_test.go",
 }

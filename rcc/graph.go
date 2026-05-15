@@ -57,7 +57,6 @@ func gnuplotWriteData(sd *StatData, datafile string) error {
 	}
 	var funcMap = template.FuncMap{
 		"formatDate": func(timeStamp time.Time) string {
-			//Define layout for formatting timestamp to string
 			return timeStamp.Format(time.RFC3339Nano)
 		},
 		"locCols": func(loc *gocloc.Result) string {

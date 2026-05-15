@@ -41,7 +41,7 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	runner := rcc.NewRunner(repo)
+	runner := rcc.NewRunner(repo, "Go")
 	runner.Run(workers, commits)
 
 	err = rcc.GraphGnuplot(runner.StatData, outfile)
