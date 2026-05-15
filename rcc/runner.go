@@ -34,6 +34,10 @@ type JobOptions struct {
 	runCoverIntegration bool
 }
 
+var languageTestfilesRegexMap = map[string]string{
+	"Go": ".*_test.go",
+}
+
 func NewRunner(repo *SourceRepository, language string, options JobOptions) *Runner {
 	return &Runner{
 		repo:          repo,
@@ -55,7 +59,9 @@ func (runner *Runner) Run(workers int, hashes []string) {
 	defer func() {
 		if err := os.RemoveAll(runner.tmpDir); err != nil {
 			log.Printf("failed to remove %s", runner.tmpDir)
+			return
 		}
+		log.Printf("removed tmp dir %s", runner.tmpDir)
 	}()
 	log.Printf("Runner started, using clone tmp dir: %s", runner.tmpDir)
 
@@ -101,6 +107,8 @@ func (runner *Runner) startBackgroundWorkers(workers int, hashes []string) {
 }
 
 func (runner *Runner) startJobInputQueueWorker() {
+	languages := gocloc.NewDefinedLanguages()
+
 	for sha := range runner.jobInputQueue {
 		// clone to clonePath with given hash
 		clonePath := filepath.Join(runner.tmpDir, sha)
@@ -112,8 +120,7 @@ func (runner *Runner) startJobInputQueueWorker() {
 
 		var loc *gocloc.Result
 		if runner.jobOptions.RunColoc {
-			languages := gocloc.NewDefinedLanguages() // HERE ?!?!?
-			clocOpts := gocloc.NewClocOptions()       // HERE ?!?!
+			clocOpts := gocloc.NewClocOptions() // HERE ?!?!
 			loc, err = getLoc(languages, clocOpts, []string{clonePath})
 			if err != nil {
 				log.Printf("gocoloc failed: %s", err)
@@ -122,18 +129,15 @@ func (runner *Runner) startJobInputQueueWorker() {
 
 			// second run for tests - only target language's test files
 			clocOpts.IncludeLangs[runner.language] = struct{}{}
-			clocOpts.ReMatch = regexp.MustCompile(languageTestfilesReMap[runner.language])
+			clocOpts.ReMatch = regexp.MustCompile(languageTestfilesRegexMap[runner.language])
 			loc2, err := getLoc(languages, clocOpts, []string{clonePath})
 			if err != nil {
 				log.Printf("gocoloc for tests failed: %s", err)
 				continue
 			}
 			if testLoc, exists := loc2.Languages[runner.language]; exists {
-				// log.Printf("LOC2: %v", testLoc.Code)
 				loc.Languages[runner.language+"Tests"] = testLoc
 			}
-
-			// log.Printf("LOC: %v", loc.Languages)
 		}
 
 		if err := os.RemoveAll(clonePath); err != nil {
@@ -147,8 +151,4 @@ func (runner *Runner) startJobInputQueueWorker() {
 			sha:      sha,
 		}
 	}
-}
-
-var languageTestfilesReMap = map[string]string{
-	"Go": ".*_test.go",
 }
