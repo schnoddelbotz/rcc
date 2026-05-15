@@ -1,6 +1,8 @@
 package rcc
 
 import (
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/go-git/go-git/v6"
@@ -46,14 +48,25 @@ func (repo *SourceRepository) GetCommits(from, to time.Time, branch string) ([]s
 	return hashes, nil
 }
 
-func (repo *SourceRepository) LocalClone(to, hash string) (time.Time, error) {
+func (repo *SourceRepository) LocalClone(to, sha string) (time.Time, error) {
 	var commitTime time.Time
-	r, err := git.PlainClone(to, &git.CloneOptions{
-		URL:               repo.path,
-		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
-	})
+	/*
+		For an example repo (14MB, 1100 commits), this takes 5+ seconds.
+		For the same repo, the os.CopyFS action below averages at 250 ms.
+		r, err := git.PlainClone(to, &git.CloneOptions{
+			URL:               repo.path,
+			RecurseSubmodules: git.NoRecurseSubmodules,
+			NoCheckout:        true,
+			Tags:              plumbing.NoTags,
+			// ReferenceName: hash,
+		})
+	*/
+	if err := os.CopyFS(to, os.DirFS(repo.path)); err != nil {
+		return commitTime, fmt.Errorf("copy failed: %w", err)
+	}
+	r, err := git.PlainOpen(to)
 	if err != nil {
-		return commitTime, err
+		return commitTime, fmt.Errorf("git open %s failed: %w", to, err)
 	}
 	defer func() { _ = r.Close() }()
 
@@ -62,7 +75,7 @@ func (repo *SourceRepository) LocalClone(to, hash string) (time.Time, error) {
 		return commitTime, err
 	}
 	err = w.Checkout(&git.CheckoutOptions{
-		Hash: plumbing.NewHash(hash),
+		Hash: plumbing.NewHash(sha),
 	})
 	if err != nil {
 		return commitTime, err

@@ -56,6 +56,7 @@ func (runner *Runner) Run(workers int, hashes []string) {
 			log.Printf("failed to remove %s", runner.tmpDir)
 		}
 	}()
+	log.Printf("Runner started, using clone tmp dir: %s", runner.tmpDir)
 
 	// start workers consuming jobInputQueue
 	runner.startBackgroundWorkers(workers, hashes)

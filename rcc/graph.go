@@ -121,8 +121,6 @@ func (g *GnuplotGraph) gnuplotWriteData(datafile string) error {
 					outline += "0 "
 				}
 			}
-			// HACK HACK
-			//outline += "5 5 5 5 5 5"
 			return outline
 		},
 	}
@@ -178,18 +176,14 @@ func (g *GnuplotGraph) gnuplotCreateScript(datafile string) string {
 	tpl := template.Must(template.New("gnuplot").Funcs(funcMap).Parse(scriptTpl))
 
 	type tplData struct {
-		// DataFile  string
 		OutFile string
 		Title   string
-		// Languages []string
 	}
 
 	buf := bytes.NewBuffer([]byte(``))
 	err := tpl.Execute(buf, tplData{
-		// DataFile:  datafile,
 		OutFile: g.outfile,
-		// Languages: g.graphData.languages(),
-		Title: g.title,
+		Title:   g.title,
 	})
 	if err != nil {
 		panic(err)
