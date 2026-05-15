@@ -32,3 +32,4 @@ go.work.sum
 # .vscode/
 /retrospective-code-coverage
 rcc-output.png
+/cover.out
