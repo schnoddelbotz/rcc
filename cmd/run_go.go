@@ -26,6 +26,9 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 	workers, _ := cmd.Flags().GetInt("workers")
 	outfile, _ := cmd.Flags().GetString("output")
 	debug, _ := cmd.Flags().GetBool("debug")
+	jobOpts := rcc.JobOptions{
+		RunColoc: true,
+	}
 
 	repoPath, err := os.Getwd()
 	if err != nil {
@@ -44,7 +47,7 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	runner := rcc.NewRunner(repo, "Go")
+	runner := rcc.NewRunner(repo, "Go", jobOpts)
 	runner.Run(workers, commits)
 
 	title := fmt.Sprintf("%s [%s]", filepath.Base(repoPath), "Go")

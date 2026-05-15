@@ -53,18 +53,22 @@ func (repo *SourceRepository) LocalClone(to, sha string) (time.Time, error) {
 	/*
 		For an example repo (14MB, 1100 commits), this takes 5+ seconds.
 		For the same repo, the os.CopyFS action below averages at 250 ms.
-		r, err := git.PlainClone(to, &git.CloneOptions{
-			URL:               repo.path,
-			RecurseSubmodules: git.NoRecurseSubmodules,
-			NoCheckout:        true,
-			Tags:              plumbing.NoTags,
-			// ReferenceName: hash,
-		})
 	*/
+	// r, err := git.PlainClone(to, &git.CloneOptions{
+	// 	URL:               repo.path,
+	// 	RecurseSubmodules: git.NoRecurseSubmodules,
+	// 	NoCheckout:        true,
+	// 	Tags:              plumbing.NoTags,
+	// 	// ReferenceName: hash,
+	// })
+
+	// TBD: Maybe just copy .git, then checkout, then reset --hard?
+	// FIXME: In contrast to above method, this will fail with unstaged changes....
 	if err := os.CopyFS(to, os.DirFS(repo.path)); err != nil {
 		return commitTime, fmt.Errorf("copy failed: %w", err)
 	}
 	r, err := git.PlainOpen(to)
+
 	if err != nil {
 		return commitTime, fmt.Errorf("git open %s failed: %w", to, err)
 	}

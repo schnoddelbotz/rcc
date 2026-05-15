@@ -41,14 +41,3 @@ func (sd *StatData) languages() []string {
 	slices.Sort(result)
 	return result
 }
-
-func processCommits(parallel uint8, repoPath, shas []string, runLoc, runCov bool) (*StatData, error) {
-	s := StatData{}
-	// wg.wait
-	return &s, nil
-}
-
-func processCommit(repoPath, sha string, runLoc, runCov bool) (StatDataEntry, error) {
-	s := StatDataEntry{}
-	return s, nil
-}

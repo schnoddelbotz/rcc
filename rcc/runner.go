@@ -14,7 +14,7 @@ import (
 )
 
 type Runner struct {
-	jobInputQueue chan job
+	jobInputQueue chan string
 	resultQueue   chan StatDataEntry
 	repo          *SourceRepository
 	StatData      *StatData
@@ -24,23 +24,24 @@ type Runner struct {
 	done          chan struct{}
 	sd            StatData
 	language      string
+	jobOptions    JobOptions
 }
 
-type job struct {
-	hash                string
-	runColoc            bool
+type JobOptions struct {
+	RunColoc            bool
 	runColocNoTests     bool
 	runCoverUnit        bool
 	runCoverIntegration bool
 }
 
-func NewRunner(repo *SourceRepository, language string) *Runner {
+func NewRunner(repo *SourceRepository, language string, options JobOptions) *Runner {
 	return &Runner{
 		repo:          repo,
-		jobInputQueue: make(chan job),
+		jobInputQueue: make(chan string),
 		resultQueue:   make(chan StatDataEntry),
 		done:          make(chan struct{}),
 		language:      language,
+		jobOptions:    options,
 	}
 }
 
@@ -62,7 +63,7 @@ func (runner *Runner) Run(workers int, hashes []string) {
 	runner.startBackgroundWorkers(workers, hashes)
 	// feed jobs to jobInputQueue
 	for _, h := range hashes {
-		runner.jobInputQueue <- job{hash: h, runColoc: true}
+		runner.jobInputQueue <- h
 	}
 
 	// wait for all workers to complete
@@ -100,17 +101,17 @@ func (runner *Runner) startBackgroundWorkers(workers int, hashes []string) {
 }
 
 func (runner *Runner) startJobInputQueueWorker() {
-	for job := range runner.jobInputQueue {
+	for sha := range runner.jobInputQueue {
 		// clone to clonePath with given hash
-		clonePath := filepath.Join(runner.tmpDir, job.hash)
-		commitTime, err := runner.repo.LocalClone(clonePath, job.hash)
+		clonePath := filepath.Join(runner.tmpDir, sha)
+		commitTime, err := runner.repo.LocalClone(clonePath, sha)
 		if err != nil {
 			log.Printf("failed to clone: %s", err)
 			continue
 		}
 
 		var loc *gocloc.Result
-		if job.runColoc {
+		if runner.jobOptions.RunColoc {
 			languages := gocloc.NewDefinedLanguages() // HERE ?!?!?
 			clocOpts := gocloc.NewClocOptions()       // HERE ?!?!
 			loc, err = getLoc(languages, clocOpts, []string{clonePath})
@@ -143,7 +144,7 @@ func (runner *Runner) startJobInputQueueWorker() {
 			Date:     commitTime,
 			Coverage: 10.0,
 			Loc:      loc,
-			sha:      job.hash,
+			sha:      sha,
 		}
 	}
 }
