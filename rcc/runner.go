@@ -29,9 +29,10 @@ type Runner struct {
 
 type JobOptions struct {
 	RunColoc            bool
-	runColocNoTests     bool
+	RunColocTests       bool
 	runCoverUnit        bool
 	runCoverIntegration bool
+	IncludeLangs        []string
 }
 
 var languageTestfilesRegexMap = map[string]string{
@@ -121,22 +122,27 @@ func (runner *Runner) startJobInputQueueWorker() {
 		var loc *gocloc.Result
 		if runner.jobOptions.RunColoc {
 			clocOpts := gocloc.NewClocOptions() // HERE ?!?!
+			for _, x := range runner.jobOptions.IncludeLangs {
+				clocOpts.IncludeLangs[x] = struct{}{}
+			}
 			loc, err = getLoc(languages, clocOpts, []string{clonePath})
 			if err != nil {
 				log.Printf("gocoloc failed: %s", err)
 				continue
 			}
 
-			// second run for tests - only target language's test files
-			clocOpts.IncludeLangs[runner.language] = struct{}{}
-			clocOpts.ReMatch = regexp.MustCompile(languageTestfilesRegexMap[runner.language])
-			loc2, err := getLoc(languages, clocOpts, []string{clonePath})
-			if err != nil {
-				log.Printf("gocoloc for tests failed: %s", err)
-				continue
-			}
-			if testLoc, exists := loc2.Languages[runner.language]; exists {
-				loc.Languages[runner.language+"Tests"] = testLoc
+			if runner.jobOptions.RunColocTests {
+				// second run for tests - only target language's test files
+				clocOpts.IncludeLangs[runner.language] = struct{}{}
+				clocOpts.ReMatch = regexp.MustCompile(languageTestfilesRegexMap[runner.language])
+				loc2, err := getLoc(languages, clocOpts, []string{clonePath})
+				if err != nil {
+					log.Printf("gocoloc for tests failed: %s", err)
+					continue
+				}
+				if testLoc, exists := loc2.Languages[runner.language]; exists {
+					loc.Languages[runner.language+"Tests"] = testLoc
+				}
 			}
 		}
 

@@ -26,8 +26,12 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 	workers, _ := cmd.Flags().GetInt("workers")
 	outfile, _ := cmd.Flags().GetString("output")
 	debug, _ := cmd.Flags().GetBool("debug")
+	includeLanguages, _ := cmd.Flags().GetStringSlice("include-languages")
+
 	jobOpts := rcc.JobOptions{
-		RunColoc: true,
+		RunColoc:      true,
+		RunColocTests: true,
+		IncludeLangs:  includeLanguages,
 	}
 
 	repoPath, err := os.Getwd()
@@ -37,7 +41,7 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		repoPath = args[0]
 	}
-	log.Printf("go called, %d workers, repoPath: %s", workers, repoPath)
+	log.Printf("Running for Go with %d workers, repoPath: %s", workers, repoPath)
 	repo, err := rcc.NewSourceRepository(repoPath)
 	if err != nil {
 		return err
@@ -50,7 +54,7 @@ func goCmdRunE(cmd *cobra.Command, args []string) error {
 	runner := rcc.NewRunner(repo, "Go", jobOpts)
 	runner.Run(workers, commits)
 
-	title := fmt.Sprintf("%s [%s]", filepath.Base(repoPath), "Go")
+	title := fmt.Sprintf("%s LoC / Coverage [%s]", filepath.Base(repoPath), "Go")
 	err = rcc.NewGnuplotGraph(runner.StatData, title, outfile, "Go", debug).Create()
 	if err != nil {
 		return err

@@ -146,6 +146,7 @@ func (g *GnuplotGraph) gnuplotCreateScript(datafile string) string {
 	scriptTpl := `set title '{{.Title}}'
         set xlabel 'Date'
         set timefmt "%Y-%m-%dT%H:%M:%S+02:00"
+		set key left top
         set xdata time
         set ytics 500 nomirror
         set ylabel 'LoC'
