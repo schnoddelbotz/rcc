@@ -3,6 +3,7 @@ package rcc
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/go-git/go-git/v6"
@@ -50,21 +51,8 @@ func (repo *SourceRepository) GetCommits(from, to time.Time, branch string) ([]s
 
 func (repo *SourceRepository) LocalClone(to, sha string) (time.Time, error) {
 	var commitTime time.Time
-	/*
-		For an example repo (14MB, 1100 commits), this takes 5+ seconds.
-		For the same repo, the os.CopyFS action below averages at 250 ms.
-	*/
-	// r, err := git.PlainClone(to, &git.CloneOptions{
-	// 	URL:               repo.path,
-	// 	RecurseSubmodules: git.NoRecurseSubmodules,
-	// 	NoCheckout:        true,
-	// 	Tags:              plumbing.NoTags,
-	// 	// ReferenceName: hash,
-	// })
 
-	// TBD: Maybe just copy .git, then checkout, then reset --hard?
-	// FIXME: In contrast to above method, this will fail with unstaged changes....
-	if err := os.CopyFS(to, os.DirFS(repo.path)); err != nil {
+	if err := os.CopyFS(filepath.Join(to, ".git"), os.DirFS(filepath.Join(repo.path, ".git"))); err != nil {
 		return commitTime, fmt.Errorf("copy failed: %w", err)
 	}
 	r, err := git.PlainOpen(to)
@@ -79,7 +67,8 @@ func (repo *SourceRepository) LocalClone(to, sha string) (time.Time, error) {
 		return commitTime, err
 	}
 	err = w.Checkout(&git.CheckoutOptions{
-		Hash: plumbing.NewHash(sha),
+		Hash:  plumbing.NewHash(sha),
+		Force: true, // override unstaged changes - we copied .git - with empty worktree
 	})
 	if err != nil {
 		return commitTime, err
