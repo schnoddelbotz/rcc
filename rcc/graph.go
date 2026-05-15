@@ -130,7 +130,7 @@ func (g *GnuplotGraph) gnuplotWriteData(datafile string) error {
 	if err != nil {
 		return err
 	}
-	defer fh.Close()
+	defer func() { _ = fh.Close() }()
 
 	err = tpl.Execute(fh, tplData{
 		Languages: g.graphData.languages(),
@@ -201,7 +201,7 @@ func gnuplotExec(script string) error {
 		return err
 	}
 	go func() {
-		defer stdin.Close()
+		defer func() { _ = stdin.Close() }()
 		_, err := io.WriteString(stdin, script)
 		if err != nil {
 			panic(err)

@@ -28,11 +28,11 @@ type Runner struct {
 }
 
 type JobOptions struct {
-	RunColoc            bool
-	RunColocTests       bool
-	runCoverUnit        bool
-	runCoverIntegration bool
-	IncludeLangs        []string
+	RunColoc      bool
+	RunColocTests bool
+	// runCoverUnit        bool
+	// runCoverIntegration bool
+	IncludeLangs []string
 }
 
 var languageTestfilesRegexMap = map[string]string{
