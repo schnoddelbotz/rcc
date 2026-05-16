@@ -21,8 +21,87 @@ THE SOFTWARE.
 */
 package main
 
-import "github.com/schnoddelbotz/retrospective-code-coverage/cmd"
+import (
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/spf13/cobra"
+)
+
+// rootCmd represents the base command when called without any subcommands
+var rootCmd = &cobra.Command{
+	Use:          "retrospective-code-coverage",
+	Short:        "Retrospectively build LoC and Coverage stats and display as graph",
+	Long:         `First argument can be local git repo to analyze, defaults to current workdir`,
+	RunE:         rootCmdRunE,
+	SilenceUsage: true,
+}
 
 func main() {
-	cmd.Execute()
+	flags := rootCmd.Flags()
+	flags.IntP("workers", "w", 5, "Number of workers")
+	flags.StringP("output", "o", "rcc-output.png", "Plot/Graph PNG output filename")
+	flags.StringP("language", "l", "", "Enables details and coverage for given language")
+	flags.BoolP("debug", "d", false, "enable debug output")
+	flags.BoolP("open", "O", false, "open graph upon completion")
+	flags.StringSliceP("include-languages", "i", []string{}, "Explicitly list languages")
+
+	err := rootCmd.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
+}
+
+func rootCmdRunE(cmd *cobra.Command, args []string) error {
+	workers, _ := cmd.Flags().GetInt("workers")
+	outfile, _ := cmd.Flags().GetString("output")
+	language, _ := cmd.Flags().GetString("language")
+	debug, _ := cmd.Flags().GetBool("debug")
+	open, _ := cmd.Flags().GetBool("open")
+	includeLanguages, _ := cmd.Flags().GetStringSlice("include-languages")
+
+	jobOpts := JobOptions{
+		RunColoc:      true,
+		RunColocTests: true,
+		IncludeLangs:  includeLanguages,
+	}
+
+	repoPath, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if len(args) > 0 {
+		repoPath = args[0]
+	}
+	langdata := GetLanguage(language)
+	if langdata == nil {
+		return fmt.Errorf("invalid --language; currently supported: Go - or leave blank for generic")
+	}
+
+	repo, err := NewSourceRepository(repoPath)
+	if err != nil {
+		return err
+	}
+	commits, err := repo.GetCommits(time.UnixMilli(0), time.Now(), "main") // FIXME branch / all
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Running for %s on %d commits with %d workers, repoPath: %s",
+		langdata.Description, len(commits), workers, repoPath)
+	runner := NewRunner(repo, langdata, jobOpts)
+	runner.Run(workers, commits)
+
+	title := fmt.Sprintf("%s LoC / Coverage [%s]", filepath.Base(repoPath), langdata.Description)
+	err = NewGnuplotGraph(runner.StatData, title, outfile, langdata.GoclocName, debug).Create()
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Graph successfully written to: %s", outfile)
+	OpenAsNeeded(open, outfile)
+	return nil
 }

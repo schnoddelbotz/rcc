@@ -1,4 +1,4 @@
-package rcc
+package main
 
 type Language struct {
 	GoclocName     string
