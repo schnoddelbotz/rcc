@@ -44,6 +44,7 @@ func main() {
 	flags := rootCmd.Flags()
 	flags.IntP("workers", "w", 5, "Number of workers")
 	flags.StringP("output", "o", "rcc-output.png", "Plot/Graph PNG output filename")
+	flags.StringP("tmp", "t", os.TempDir(), "Temp directory path to use for history clones")
 	flags.StringP("language", "l", "", "Enables details and coverage for given language")
 	flags.BoolP("debug", "d", false, "enable debug output")
 	flags.BoolP("open", "O", false, "open graph upon completion")
@@ -59,6 +60,7 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	workers, _ := cmd.Flags().GetInt("workers")
 	outfile, _ := cmd.Flags().GetString("output")
 	language, _ := cmd.Flags().GetString("language")
+	tmpPath, _ := cmd.Flags().GetString("tmp")
 	debug, _ := cmd.Flags().GetBool("debug")
 	open, _ := cmd.Flags().GetBool("open")
 	includeLanguages, _ := cmd.Flags().GetStringSlice("include-languages")
@@ -67,6 +69,7 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 		RunColoc:      true,
 		RunColocTests: true,
 		IncludeLangs:  includeLanguages,
+		TmpPath:       tmpPath,
 	}
 
 	repoPath, err := os.Getwd()

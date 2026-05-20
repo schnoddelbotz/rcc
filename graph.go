@@ -65,19 +65,6 @@ func (g *GnuplotGraph) Create() error {
 	return nil
 }
 
-func getColNames(lang string, languages []string) []string {
-	res := []string{}
-	for _, l := range languages {
-		if l == lang {
-			res = append(res, l+"Code")
-			res = append(res, l+"Comments")
-			continue
-		}
-		res = append(res, l)
-	}
-	return res
-}
-
 func (g *GnuplotGraph) gnuplotWriteData(datafile string) error {
 	datTpl := `# date                    {{locHeaderLangs}} coverage coverage_integration
         {{- range .Entries }}
@@ -93,7 +80,7 @@ func (g *GnuplotGraph) gnuplotWriteData(datafile string) error {
 			return timeStamp.Format(time.RFC3339Nano)
 		},
 		"locHeaderLangs": func() string {
-			return strings.Join(getColNames(g.language, g.graphData.languages()), " ")
+			return strings.Join(g.graphData.languages(), " ")
 		},
 		"locCols": func(loc *gocloc.Result) string {
 			outline := ""
@@ -101,13 +88,15 @@ func (g *GnuplotGraph) gnuplotWriteData(datafile string) error {
 			for _, l := range g.graphData.languages() {
 				if l == g.language {
 					if lang, exists := loc.Languages[l]; exists {
-						outline += fmt.Sprintf("%d %d ", lang.Code, lang.Comments)
+						// outline += fmt.Sprintf("%d %d ", lang.Code, lang.Comments)
+						outline += fmt.Sprintf("%d ", lang.Code)
 					} else {
-						outline += "0 0 "
+						outline += "0 "
+						// outline += "0 0 "
 					}
 					continue
 				}
-				if l == g.language+"Tests" {
+				if l == g.language+"ExcludingTests" {
 					if lang, exists := loc.Languages[l]; exists {
 						outline += fmt.Sprintf("%d ", lang.Code)
 					} else {
@@ -163,7 +152,7 @@ func (g *GnuplotGraph) gnuplotCreateScript(datafile string) string {
 		"plotArgs": func() string {
 			res := ""
 			plotArgFmt := `'%s' using 1:%d t '%s' with linespoints`
-			colNames := getColNames(g.language, g.graphData.languages())
+			colNames := g.graphData.languages()
 			for column, lang := range colNames {
 				res += fmt.Sprintf(plotArgFmt, datafile, column+2, lang)
 				if column+1 < len(colNames) {

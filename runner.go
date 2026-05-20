@@ -19,7 +19,7 @@ type Runner struct {
 	repo          *SourceRepository
 	StatData      *StatData
 	jobsDone      atomic.Uint32
-	tmpDir        string
+	tmpDir        string // within tmpPath, will be removed at exit
 	wg            sync.WaitGroup
 	done          chan struct{}
 	sd            StatData
@@ -33,6 +33,7 @@ type JobOptions struct {
 	// runCoverUnit        bool
 	// runCoverIntegration bool
 	IncludeLangs []string
+	TmpPath      string
 }
 
 func NewRunner(repo *SourceRepository, language *Language, options JobOptions) *Runner {
@@ -49,7 +50,7 @@ func NewRunner(repo *SourceRepository, language *Language, options JobOptions) *
 func (runner *Runner) Run(workers int, hashes []string) {
 	var err error
 	// create tmpDir root, shared by all workers
-	runner.tmpDir, err = os.MkdirTemp(os.TempDir(), "rcc")
+	runner.tmpDir, err = os.MkdirTemp(runner.jobOptions.TmpPath, "rcc")
 	if err != nil {
 		panic(err)
 	}
@@ -130,14 +131,15 @@ func (runner *Runner) startJobInputQueueWorker() {
 			if runner.jobOptions.RunColocTests {
 				// second run for tests - only target language's test files
 				clocOpts.IncludeLangs[runner.language.GoclocName] = struct{}{}
-				clocOpts.ReMatch = regexp.MustCompile(runner.language.TestfilesRegex)
+				// clocOpts.ReMatch = regexp.MustCompile(runner.language.TestfilesRegex)
+				clocOpts.ReNotMatch = regexp.MustCompile(runner.language.TestfilesRegex)
 				loc2, err := getLoc(languages, clocOpts, []string{clonePath})
 				if err != nil {
 					log.Printf("gocoloc for tests failed: %s", err)
 					continue
 				}
 				if testLoc, exists := loc2.Languages[runner.language.GoclocName]; exists {
-					loc.Languages[runner.language.GoclocName+"Tests"] = testLoc
+					loc.Languages[runner.language.GoclocName+"ExcludingTests"] = testLoc
 				}
 			}
 		}
