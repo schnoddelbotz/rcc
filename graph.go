@@ -16,20 +16,22 @@ import (
 )
 
 type GnuplotGraph struct {
-	graphData *StatData
-	outfile   string
-	language  string
-	debug     bool
-	title     string
+	graphData  *StatData
+	outfile    string
+	language   string
+	debug      bool
+	title      string
+	jobOptions JobOptions
 }
 
-func NewGnuplotGraph(graphData *StatData, title, outfile, language string, debug bool) *GnuplotGraph {
+func NewGnuplotGraph(graphData *StatData, title, outfile, language string, debug bool, jobopts JobOptions) *GnuplotGraph {
 	return &GnuplotGraph{
-		graphData: graphData,
-		outfile:   outfile,
-		language:  language,
-		debug:     debug,
-		title:     title,
+		graphData:  graphData,
+		outfile:    outfile,
+		language:   language,
+		debug:      debug,
+		title:      title,
+		jobOptions: jobopts,
 	}
 }
 
@@ -66,9 +68,9 @@ func (g *GnuplotGraph) Create() error {
 }
 
 func (g *GnuplotGraph) gnuplotWriteData(datafile string) error {
-	datTpl := `# date                    {{locHeaderLangs}} coverage coverage_integration
+	datTpl := `# date                    {{locHeaderLangs}} coverage_unit coverage_integration coverage_unit_duration coverage_integration_duration
         {{- range .Entries }}
-{{formatDate .Date}} {{locCols .Loc}}
+{{formatDate .Date}} {{locCols .Loc}} {{covCols .}}
         {{- end }}
 `
 	type tplData struct {
@@ -80,7 +82,11 @@ func (g *GnuplotGraph) gnuplotWriteData(datafile string) error {
 			return timeStamp.Format(time.RFC3339Nano)
 		},
 		"locHeaderLangs": func() string {
+			// + COVERAGE FIXME // DURATION
 			return strings.Join(g.graphData.languages(), " ")
+		},
+		"covCols": func(sd *StatDataEntry) string {
+			return fmt.Sprintf("%.2f", sd.CoverageUnit)
 		},
 		"locCols": func(loc *gocloc.Result) string {
 			outline := ""
@@ -155,10 +161,12 @@ func (g *GnuplotGraph) gnuplotCreateScript(datafile string) string {
 			colNames := g.graphData.languages()
 			for column, lang := range colNames {
 				res += fmt.Sprintf(plotArgFmt, datafile, column+2, lang)
-				if column+1 < len(colNames) {
-					res += ", \\\n"
-				}
+				// if column+1 < len(colNames) {
+				res += ", \\\n"
+				// }
 			}
+			plotArgFmt = `'%s' using 1:%d t '%s' axis x1y2 with linespoints`
+			res += fmt.Sprintf(plotArgFmt, datafile, len(colNames)+2, "UnitTestCoverage")
 			return res
 		},
 	}

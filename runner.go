@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -28,12 +30,13 @@ type Runner struct {
 }
 
 type JobOptions struct {
-	RunColoc      bool
-	RunColocTests bool
-	// runCoverUnit        bool
-	// runCoverIntegration bool
-	IncludeLangs []string
-	TmpPath      string
+	RunColoc            bool
+	RunColocTests       bool
+	runCoverUnit        bool
+	runCoverIntegration bool
+	includeDuration     bool
+	IncludeLangs        []string
+	TmpPath             string
 }
 
 func NewRunner(repo *SourceRepository, language *Language, options JobOptions) *Runner {
@@ -115,6 +118,7 @@ func (runner *Runner) startJobInputQueueWorker() {
 			log.Printf("failed to clone: %s", err)
 			continue
 		}
+		stat := StatDataEntry{Date: commitTime, sha: sha}
 
 		var loc *gocloc.Result
 		if runner.jobOptions.RunColoc {
@@ -122,6 +126,7 @@ func (runner *Runner) startJobInputQueueWorker() {
 			for _, x := range runner.jobOptions.IncludeLangs {
 				clocOpts.IncludeLangs[x] = struct{}{}
 			}
+
 			loc, err = getLoc(languages, clocOpts, []string{clonePath})
 			if err != nil {
 				log.Printf("gocoloc failed: %s", err)
@@ -129,9 +134,8 @@ func (runner *Runner) startJobInputQueueWorker() {
 			}
 
 			if runner.jobOptions.RunColocTests {
-				// second run for tests - only target language's test files
+				// second run for tests - exclude target language's test files
 				clocOpts.IncludeLangs[runner.language.GoclocName] = struct{}{}
-				// clocOpts.ReMatch = regexp.MustCompile(runner.language.TestfilesRegex)
 				clocOpts.ReNotMatch = regexp.MustCompile(runner.language.TestfilesRegex)
 				loc2, err := getLoc(languages, clocOpts, []string{clonePath})
 				if err != nil {
@@ -142,17 +146,46 @@ func (runner *Runner) startJobInputQueueWorker() {
 					loc.Languages[runner.language.GoclocName+"ExcludingTests"] = testLoc
 				}
 			}
+
+			stat.Loc = loc
+		}
+
+		if runner.jobOptions.runCoverUnit {
+			start := time.Now()
+
+			cmd := exec.Command(runner.language.TestExecutable, runner.language.UnitTestArgs...)
+			cmd.Dir = clonePath
+			// out, err := cmd.Output()
+			err := cmd.Run()
+			if err != nil {
+				log.Println(err)
+				break
+			}
+			// log.Println(string(out))
+			// Hmm... Go-specific ... must run 2nd tool to get overall coverage...
+			cmd2 := exec.Command(runner.language.TestExecutable, "tool", "cover", "-func", "cover.out")
+			cmd2.Dir = clonePath
+			out, err := cmd2.Output()
+			if err != nil {
+				log.Println(err)
+				break
+			}
+			pattern := regexp.MustCompile(`total:\s+\(statements\)\s+(\d+.\d+)%`)
+			m := pattern.FindAllStringSubmatch(string(out), -1)
+			// log.Printf("M: %+q", m[0][1]) // panic...
+			ucov, _ := strconv.ParseFloat(m[0][1], 32) // panic...!
+			stat.CoverageUnit = float32(ucov)
+
+			duration := time.Since(start)
+			log.Printf("run unit tests for %s [%s %s] took %s => %.2f ", sha, runner.language.TestExecutable, runner.language.UnitTestArgs, duration, ucov)
+			// stat.CoverageUnit = 12
+			stat.UnitDuration = duration
 		}
 
 		if err := os.RemoveAll(clonePath); err != nil {
 			log.Printf("failed to remove clone %s", clonePath)
 		}
 
-		runner.resultQueue <- StatDataEntry{ /* add loc, add cov*/
-			Date:     commitTime,
-			Coverage: 10.0,
-			Loc:      loc,
-			sha:      sha,
-		}
+		runner.resultQueue <- stat
 	}
 }

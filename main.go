@@ -46,9 +46,14 @@ func main() {
 	flags.StringP("output", "o", "rcc-output.png", "Plot/Graph PNG output filename")
 	flags.StringP("tmp", "t", os.TempDir(), "Temp directory path to use for history clones")
 	flags.StringP("language", "l", "", "Enables details and coverage for given language")
-	flags.BoolP("debug", "d", false, "enable debug output")
-	flags.BoolP("open", "O", false, "open graph upon completion")
+	flags.BoolP("debug", "d", false, "Enable debug output")
+	flags.BoolP("open", "O", false, "Open graph upon completion")
 	flags.StringSliceP("include-languages", "i", []string{}, "Explicitly list languages")
+	// --ramdisk ? -> macos: https://gist.github.com/htr3n/344f06ba2bb20b1056d7d5570fe7f596
+	// only if -l ...:
+	flags.BoolP("cover-unit", "U", true, "Run unit tests (for given --language)")
+	flags.BoolP("cover-integration", "I", false, "Run integration tests (for given --language)")
+	flags.BoolP("cover-duration", "D", true, "Include test execution duration in graph")
 
 	err := rootCmd.Execute()
 	if err != nil {
@@ -63,13 +68,19 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	tmpPath, _ := cmd.Flags().GetString("tmp")
 	debug, _ := cmd.Flags().GetBool("debug")
 	open, _ := cmd.Flags().GetBool("open")
+	coverU, _ := cmd.Flags().GetBool("cover-unit")
+	coverI, _ := cmd.Flags().GetBool("cover-integration")
+	coverD, _ := cmd.Flags().GetBool("cover-duration")
 	includeLanguages, _ := cmd.Flags().GetStringSlice("include-languages")
 
 	jobOpts := JobOptions{
-		RunColoc:      true,
-		RunColocTests: true,
-		IncludeLangs:  includeLanguages,
-		TmpPath:       tmpPath,
+		RunColoc:            true,
+		RunColocTests:       true,
+		IncludeLangs:        includeLanguages,
+		TmpPath:             tmpPath,
+		runCoverUnit:        coverU,
+		runCoverIntegration: coverI,
+		includeDuration:     coverD,
 	}
 
 	repoPath, err := os.Getwd()
@@ -99,7 +110,7 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	runner.Run(workers, commits)
 
 	title := fmt.Sprintf("%s LoC / Coverage [%s]", filepath.Base(repoPath), langdata.Description)
-	err = NewGnuplotGraph(runner.StatData, title, outfile, langdata.GoclocName, debug).Create()
+	err = NewGnuplotGraph(runner.StatData, title, outfile, langdata.GoclocName, debug, jobOpts).Create()
 	if err != nil {
 		return err
 	}

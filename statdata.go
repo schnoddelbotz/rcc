@@ -14,11 +14,13 @@ type StatData struct {
 // type locData map[string]uint
 
 type StatDataEntry struct {
-	sha      string
-	Date     time.Time
-	Loc      *gocloc.Result
-	Coverage float32
-	Duration time.Duration
+	sha                 string
+	Date                time.Time
+	Loc                 *gocloc.Result
+	CoverageUnit        float32
+	CoverageIntegration float32
+	UnitDuration        time.Duration
+	IntegrationDuration time.Duration
 }
 
 func (sd *StatData) sort() {

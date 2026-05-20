@@ -1,9 +1,12 @@
 package main
 
 type Language struct {
-	GoclocName     string
-	Description    string
-	TestfilesRegex string
+	GoclocName          string
+	Description         string
+	TestfilesRegex      string
+	TestExecutable      string
+	UnitTestArgs        []string
+	IntegrationTestArgs []string
 }
 
 func GetLanguage(l string) *Language {
@@ -15,8 +18,11 @@ func GetLanguage(l string) *Language {
 
 var languagesMap = map[string]*Language{
 	"Go": {
-		GoclocName:     "Go",
-		Description:    "golang",
-		TestfilesRegex: ".*_test.go",
+		GoclocName:          "Go",
+		Description:         "golang",
+		TestfilesRegex:      ".*_test.go",
+		TestExecutable:      "go",
+		UnitTestArgs:        []string{"test", "-coverprofile", "cover.out", "./..."},
+		IntegrationTestArgs: []string{"test", "-coverprofile", "cover.out", "-tags=integration", "./..."},
 	},
 }

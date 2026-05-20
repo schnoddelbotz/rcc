@@ -31,8 +31,8 @@ func TestCreateGraph(t *testing.T) {
 				},
 			},
 		},
-		Coverage: 75.5,
-		Duration: time.Second,
+		CoverageIntegration: 75.5,
+		UnitDuration:        time.Second,
 	}
 
 	statData := &StatData{
@@ -42,7 +42,7 @@ func TestCreateGraph(t *testing.T) {
 	tmpdir := t.TempDir()
 	outfile := filepath.Join(tmpdir, "test_graph.png")
 
-	graph := NewGnuplotGraph(statData, "Test Graph", outfile, "Go", false)
+	graph := NewGnuplotGraph(statData, "Test Graph", outfile, "Go", false, JobOptions{})
 	err := graph.Create()
 	require.NoError(t, err, "Create() should not return an error")
 
