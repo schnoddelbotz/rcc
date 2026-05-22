@@ -128,34 +128,8 @@ func (runner *Runner) startJobInputQueueWorker() {
 		}
 		stat := StatDataEntry{Date: commitTime, sha: sha}
 
-		var loc *gocloc.Result
 		if runner.jobOptions.RunColoc {
-			clocOpts := gocloc.NewClocOptions() // HERE ?!?!
-			for _, x := range runner.jobOptions.IncludeLangs {
-				clocOpts.IncludeLangs[x] = struct{}{}
-			}
-
-			loc, err = getLoc(languages, clocOpts, []string{clonePath})
-			if err != nil {
-				log.Printf("gocoloc failed: %s", err)
-				continue
-			}
-
-			if runner.jobOptions.RunColocTests {
-				// second run for tests - exclude target language's test files
-				clocOpts.IncludeLangs[runner.language.GoclocName] = struct{}{}
-				clocOpts.ReNotMatch = regexp.MustCompile(runner.language.TestfilesRegex)
-				loc2, err := getLoc(languages, clocOpts, []string{clonePath})
-				if err != nil {
-					log.Printf("gocoloc for tests failed: %s", err)
-					continue
-				}
-				if testLoc, exists := loc2.Languages[runner.language.GoclocName]; exists {
-					loc.Languages[runner.language.GoclocName+"ExcludingTests"] = testLoc
-				}
-			}
-
-			stat.Loc = loc
+			stat.Loc = runner.runCloc(clonePath, languages)
 		}
 
 		if runner.jobOptions.runCoverUnit {
@@ -186,24 +160,32 @@ func (runner *Runner) startJobInputQueueWorker() {
 	}
 }
 
-func runTestCmd(clonePath string, command string) TestResult {
-	start := time.Now()
-
-	cmd := exec.Command("sh", "-c", command)
-	cmd.Dir = clonePath
-	output, err := cmd.Output()
-	if err != nil {
-		log.Println(err)
-		return TestResult{Err: fmt.Errorf("failed running test command '%s'; error: %s", command, err)}
-	}
-	cleanedOutput := strings.TrimRight(string(output), "\n")
-	coverage, err := strconv.ParseFloat(cleanedOutput, 32)
-	if err != nil {
-		return TestResult{Err: fmt.Errorf("cannot parse coverage float from test cmd output: '%s'; error:%s", cleanedOutput, err)}
+func (runner *Runner) runCloc(clonePath string, languages *gocloc.DefinedLanguages) *gocloc.Result {
+	clocOpts := gocloc.NewClocOptions() // HERE ?!?!
+	for _, x := range runner.jobOptions.IncludeLangs {
+		clocOpts.IncludeLangs[x] = struct{}{}
 	}
 
-	duration := time.Since(start)
-	return TestResult{Duration: duration, Coverage: float32(coverage)}
+	loc, err := getLoc(languages, clocOpts, []string{clonePath})
+	if err != nil {
+		log.Printf("gocoloc failed: %s", err)
+		return nil
+	}
+
+	if runner.jobOptions.RunColocTests {
+		// second run for tests - exclude target language's test files
+		clocOpts.IncludeLangs[runner.language.GoclocName] = struct{}{}
+		clocOpts.ReNotMatch = regexp.MustCompile(runner.language.TestfilesRegex)
+		loc2, err := getLoc(languages, clocOpts, []string{clonePath})
+		if err != nil {
+			log.Printf("gocoloc for tests failed: %s", err)
+			return nil
+		}
+		if testLoc, exists := loc2.Languages[runner.language.GoclocName]; exists {
+			loc.Languages[runner.language.GoclocName+"ExcludingTests"] = testLoc
+		}
+	}
+	return loc
 }
 
 func getLoc(languages *gocloc.DefinedLanguages, options *gocloc.ClocOptions, paths []string) (*gocloc.Result, error) {
@@ -214,4 +196,26 @@ func getLoc(languages *gocloc.DefinedLanguages, options *gocloc.ClocOptions, pat
 		return nil, fmt.Errorf("fail gocloc analyze. error: %w", err)
 	}
 	return result, nil
+}
+
+// runTestCmd executes tests in clonePath using command.
+// The shell command must run tests (silently) and return a coverage value (parsable float, trailing % is stripped if any).
+func runTestCmd(clonePath string, command string) TestResult {
+	start := time.Now()
+
+	cmd := exec.Command("sh", "-c", command)
+	cmd.Dir = clonePath
+	output, err := cmd.Output()
+	if err != nil {
+		log.Println(err)
+		return TestResult{Err: fmt.Errorf("failed running test command '%s'; error: %s", command, err)}
+	}
+	cleanedOutput := strings.TrimRight(string(output), "%\n")
+	coverage, err := strconv.ParseFloat(cleanedOutput, 32)
+	if err != nil {
+		return TestResult{Err: fmt.Errorf("cannot parse coverage float from test cmd output: '%s'; error:%s", cleanedOutput, err)}
+	}
+
+	duration := time.Since(start)
+	return TestResult{Duration: duration, Coverage: float32(coverage)}
 }

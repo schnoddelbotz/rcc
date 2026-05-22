@@ -152,15 +152,14 @@ func (g *GnuplotGraph) gnuplotCreateScript(datafile string) string {
 	scriptTpl := `set title '{{.Title}}'
         set xlabel 'Date'
         set timefmt "%Y-%m-%dT%H:%M:%S+02:00"
-		set key left top
+        set key left top
         set xdata time
         set ytics 500 nomirror
-        set ylabel 'LoC'
+        set ylabel 'Lines of Code'
         set y2tics 10 nomirror
-        set y2label '{{y2Label}}'
-        set y2range [0:100]
+        set y2label '{{y2Label}}' {{y2RangeIfAny}}
         set term pngcairo
-        set terminal png size 1024,768
+        set terminal png size 1400,700
         set output "{{.OutFile}}"
         plot {{plotArgs}}
 `
@@ -176,6 +175,12 @@ func (g *GnuplotGraph) gnuplotCreateScript(datafile string) string {
 				}
 			}
 			return label
+		},
+		"y2RangeIfAny": func() string {
+			if g.jobOptions.runCoverIntegration || g.jobOptions.runCoverUnit {
+				return "\n        set y2range [0:100]"
+			}
+			return ""
 		},
 		"plotArgs": func() string {
 			res := ""

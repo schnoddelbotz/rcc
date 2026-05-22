@@ -27,7 +27,7 @@ var languagesMap = map[string]*Language{
 
 		// TODO: Make overrideable via cli:
 		TestfilesRegex: ".*_test.go",
-		UnitTestCmd:    "go test -coverprofile cover.out ./... >/dev/null && go tool cover -func cover.out | tail -1 | awk '{ print $3 }' | cut -d% -f1",
+		UnitTestCmd:    "go test -coverprofile cover.out ./... >/dev/null && go tool cover -func cover.out | tail -1 | awk '{ print $3 }'",
 		// IntegrationTestCmd: "go test -coverprofile cover.out -tags=integration ./... ",
 	},
 }

@@ -58,6 +58,9 @@ func main() {
 	flags.BoolP("cover-integration", "I", false, "Run integration tests (for given --language)")
 	flags.BoolP("no-cover-duration", "D", false, "Do not include duration for coverage runs in graph")
 	// todo: add option to disable LoC
+	// todo: output png dimensions
+	// todo: drop cobra?
+	// todo: flags.StringP("cover-unit-command", "C", "", "Override language default / set coverage shell command for --language")
 
 	err := rootCmd.Execute()
 	if err != nil {
@@ -100,14 +103,17 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	}
 	titleParts := ""
 	if langdata.UnitTestCmd != "" && !noCoverU {
+		log.Println("Coverage (unit tests): enabled")
 		jobOpts.runCoverUnit = true
 		titleParts = " + Coverage (Unit-Tests)"
 	}
 	if langdata.IntegrationTestCmd != "" && CoverI {
+		log.Println("Coverage (integration tests): enabled")
 		jobOpts.runCoverIntegration = true
 		titleParts = " + Coverage (Integration-Tests)"
 	}
 	if (jobOpts.runCoverUnit || jobOpts.runCoverIntegration) && !noCoverD {
+		log.Println("Graphing of coverage test duration: enabled")
 		jobOpts.includeDuration = true
 		titleParts += " + Test Duration"
 	}
