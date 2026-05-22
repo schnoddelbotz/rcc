@@ -9,9 +9,11 @@ type Language struct {
 	IntegrationTestArgs []string
 }
 
+const LanguageGeneric = "generic"
+
 func GetLanguage(l string) *Language {
 	if l == "" {
-		return &Language{Description: "generic"}
+		return &Language{Description: LanguageGeneric}
 	}
 	return languagesMap[l]
 }

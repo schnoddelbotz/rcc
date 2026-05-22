@@ -161,12 +161,12 @@ func (g *GnuplotGraph) gnuplotCreateScript(datafile string) string {
 			colNames := g.graphData.languages()
 			for column, lang := range colNames {
 				res += fmt.Sprintf(plotArgFmt, datafile, column+2, lang)
-				// if column+1 < len(colNames) {
 				res += ", \\\n"
-				// }
 			}
-			plotArgFmt = `'%s' using 1:%d t '%s' axis x1y2 with linespoints`
-			res += fmt.Sprintf(plotArgFmt, datafile, len(colNames)+2, "UnitTestCoverage")
+			if g.jobOptions.runCoverUnit {
+				plotArgFmt = `'%s' using 1:%d t '%s' axis x1y2 with linespoints`
+				res += fmt.Sprintf(plotArgFmt, datafile, len(colNames)+2, "UnitTestCoverage")
+			}
 			return res
 		},
 	}

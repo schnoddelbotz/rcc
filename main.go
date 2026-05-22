@@ -94,6 +94,11 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	if langdata == nil {
 		return fmt.Errorf("invalid --language; currently supported: Go - or leave blank for generic")
 	}
+	if langdata.Description == LanguageGeneric {
+		jobOpts.runCoverUnit = false
+		jobOpts.runCoverIntegration = false
+		jobOpts.includeDuration = false
+	}
 
 	repo, err := NewSourceRepository(repoPath)
 	if err != nil {
