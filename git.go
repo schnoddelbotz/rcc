@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -17,6 +18,7 @@ type SourceRepository struct {
 }
 
 func NewSourceRepository(path string) (*SourceRepository, error) {
+	log.Printf("Trying to open git repository at %s ...", path)
 	repo, err := git.PlainOpen(path)
 	if err != nil {
 		return nil, err
@@ -28,6 +30,7 @@ func (repo *SourceRepository) GetCommits(from, to time.Time, branch string) ([]s
 	// based on: https://github.com/go-git/go-git/blob/main/_examples/log/main.go
 	// get list of commits to process - limit using time range.
 	// list commits within range from any branch by default, or limit to one (or more?).
+	log.Println("Getting git commit history ...")
 	hashes := []string{}
 	ref, err := repo.repo.Head()
 	if err != nil {

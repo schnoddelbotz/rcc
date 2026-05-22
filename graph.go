@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,17 +18,15 @@ type GnuplotGraph struct {
 	graphData  *StatData
 	outfile    string
 	language   string
-	debug      bool
 	title      string
 	jobOptions JobOptions
 }
 
-func NewGnuplotGraph(graphData *StatData, title, outfile, language string, debug bool, jobopts JobOptions) *GnuplotGraph {
+func NewGnuplotGraph(graphData *StatData, title, outfile, language string, jobopts JobOptions) *GnuplotGraph {
 	return &GnuplotGraph{
 		graphData:  graphData,
 		outfile:    outfile,
 		language:   language,
-		debug:      debug,
 		title:      title,
 		jobOptions: jobopts,
 	}
@@ -42,7 +39,7 @@ func (g *GnuplotGraph) Create() error {
 	}
 	defer func() {
 		_ = os.RemoveAll(tmpdir)
-		log.Printf("removed gnuplot tmpdir %s", tmpdir)
+		// log.Printf("removed gnuplot tmpdir %s", tmpdir)
 	}()
 	datafile := filepath.Join(tmpdir, "rcc-gc.dat")
 
@@ -53,7 +50,7 @@ func (g *GnuplotGraph) Create() error {
 
 	script := g.gnuplotCreateScript(datafile)
 
-	if g.debug {
+	if g.jobOptions.debug {
 		dat, _ := os.ReadFile(datafile)
 		fmt.Println(string(dat))
 		fmt.Println(script)
@@ -70,7 +67,7 @@ func (g *GnuplotGraph) Create() error {
 func (g *GnuplotGraph) gnuplotWriteData(datafile string) error {
 	datTpl := `# date                    {{locHeaderLangs}} coverage_unit coverage_integration coverage_unit_duration coverage_integration_duration
         {{- range .Entries }}
-{{formatDate .Date}} {{locCols .Loc}} {{covCols .}}
+{{formatDate .Date}} {{locCols .Loc}}{{covCols .}}
         {{- end }}
 `
 	type tplData struct {
@@ -86,7 +83,21 @@ func (g *GnuplotGraph) gnuplotWriteData(datafile string) error {
 			return strings.Join(g.graphData.languages(), " ")
 		},
 		"covCols": func(sd *StatDataEntry) string {
-			return fmt.Sprintf("%.2f", sd.CoverageUnit)
+			// g.jobOptions.includeDuration affects duration display for both unit and integration tests
+			outline := ""
+			if g.jobOptions.runCoverUnit {
+				outline += fmt.Sprintf("%2f ", sd.CoverageUnit)
+				if g.jobOptions.includeDuration {
+					outline += fmt.Sprintf("%2f ", sd.UnitDuration.Seconds())
+				}
+			}
+			if g.jobOptions.runCoverIntegration {
+				outline += fmt.Sprintf("%2f ", sd.CoverageIntegration)
+				if g.jobOptions.includeDuration {
+					outline += fmt.Sprintf("%2f ", sd.IntegrationDuration.Seconds())
+				}
+			}
+			return outline
 		},
 		"locCols": func(loc *gocloc.Result) string {
 			outline := ""
@@ -146,7 +157,7 @@ func (g *GnuplotGraph) gnuplotCreateScript(datafile string) string {
         set ytics 500 nomirror
         set ylabel 'LoC'
         set y2tics 10 nomirror
-        set y2label 'Coverage'
+        set y2label '{{y2Label}}'
         set y2range [0:100]
         set term pngcairo
         set terminal png size 1024,768
@@ -155,6 +166,17 @@ func (g *GnuplotGraph) gnuplotCreateScript(datafile string) string {
 `
 
 	var funcMap = template.FuncMap{
+		"y2Label": func() string {
+			label := ""
+			if g.jobOptions.runCoverIntegration || g.jobOptions.runCoverUnit {
+				label = "Coverage (%)"
+				if g.jobOptions.includeDuration {
+					// fixme: third axis required if values > 100 ... or switch to minutes?
+					label += " + Test Duration (s)"
+				}
+			}
+			return label
+		},
 		"plotArgs": func() string {
 			res := ""
 			plotArgFmt := `'%s' using 1:%d t '%s' with linespoints`
@@ -166,7 +188,13 @@ func (g *GnuplotGraph) gnuplotCreateScript(datafile string) string {
 			if g.jobOptions.runCoverUnit {
 				plotArgFmt = `'%s' using 1:%d t '%s' axis x1y2 with linespoints`
 				res += fmt.Sprintf(plotArgFmt, datafile, len(colNames)+2, "UnitTestCoverage")
+				res += ", \\\n"
+				if g.jobOptions.includeDuration {
+					res += fmt.Sprintf(plotArgFmt, datafile, len(colNames)+3, "UnitTestDuration")
+					res += ", \\\n"
+				}
 			}
+			// TODO: Add Integration - fix ^ +2, +3 ...
 			return res
 		},
 	}

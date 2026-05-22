@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -37,6 +38,13 @@ type JobOptions struct {
 	includeDuration     bool
 	IncludeLangs        []string
 	TmpPath             string
+	debug               bool
+}
+
+type TestResult struct {
+	Coverage float32
+	Duration time.Duration
+	Err      error
 }
 
 func NewRunner(repo *SourceRepository, language *Language, options JobOptions) *Runner {
@@ -62,7 +70,7 @@ func (runner *Runner) Run(workers int, hashes []string) {
 			log.Printf("failed to remove %s", runner.tmpDir)
 			return
 		}
-		log.Printf("removed tmp dir %s", runner.tmpDir)
+		// log.Printf("removed tmp dir %s", runner.tmpDir)
 	}()
 	log.Printf("Runner started, using clone tmp dir: %s", runner.tmpDir)
 
@@ -151,35 +159,23 @@ func (runner *Runner) startJobInputQueueWorker() {
 		}
 
 		if runner.jobOptions.runCoverUnit {
-			start := time.Now()
-
-			cmd := exec.Command(runner.language.TestExecutable, runner.language.UnitTestArgs...)
-			cmd.Dir = clonePath
-			// out, err := cmd.Output()
-			err := cmd.Run()
-			if err != nil {
-				log.Println(err)
-				break
+			result := runTestCmd(clonePath, runner.language.UnitTestCmd)
+			stat.CoverageUnit = result.Coverage
+			stat.UnitDuration = result.Duration
+			if result.Err != nil || runner.jobOptions.debug {
+				log.Printf("test-unit@%s '%s' took %.2fs => %3.2f | Err: %s",
+					sha[0:8], runner.language.UnitTestCmd, result.Duration.Seconds(), result.Coverage, result.Err)
 			}
-			// log.Println(string(out))
-			// Hmm... Go-specific ... must run 2nd tool to get overall coverage...
-			cmd2 := exec.Command(runner.language.TestExecutable, "tool", "cover", "-func", "cover.out")
-			cmd2.Dir = clonePath
-			out, err := cmd2.Output()
-			if err != nil {
-				log.Println(err)
-				break
-			}
-			pattern := regexp.MustCompile(`total:\s+\(statements\)\s+(\d+.\d+)%`)
-			m := pattern.FindAllStringSubmatch(string(out), -1)
-			// log.Printf("M: %+q", m[0][1]) // panic...
-			ucov, _ := strconv.ParseFloat(m[0][1], 32) // panic...!
-			stat.CoverageUnit = float32(ucov)
+		}
 
-			duration := time.Since(start)
-			log.Printf("run unit tests for %s [%s %s] took %s => %.2f ", sha, runner.language.TestExecutable, runner.language.UnitTestArgs, duration, ucov)
-			// stat.CoverageUnit = 12
-			stat.UnitDuration = duration
+		if runner.jobOptions.runCoverIntegration {
+			result := runTestCmd(clonePath, runner.language.IntegrationTestCmd)
+			stat.CoverageIntegration = result.Coverage
+			stat.IntegrationDuration = result.Duration
+			if result.Err != nil || runner.jobOptions.debug {
+				log.Printf("test-integration@%s '%s' took %.2fs => %3.2f | Err: %s",
+					sha[0:8], runner.language.IntegrationTestCmd, result.Duration.Seconds(), result.Coverage, result.Err)
+			}
 		}
 
 		if err := os.RemoveAll(clonePath); err != nil {
@@ -188,4 +184,34 @@ func (runner *Runner) startJobInputQueueWorker() {
 
 		runner.resultQueue <- stat
 	}
+}
+
+func runTestCmd(clonePath string, command string) TestResult {
+	start := time.Now()
+
+	cmd := exec.Command("sh", "-c", command)
+	cmd.Dir = clonePath
+	output, err := cmd.Output()
+	if err != nil {
+		log.Println(err)
+		return TestResult{Err: fmt.Errorf("failed running test command '%s'; error: %s", command, err)}
+	}
+	cleanedOutput := strings.TrimRight(string(output), "\n")
+	coverage, err := strconv.ParseFloat(cleanedOutput, 32)
+	if err != nil {
+		return TestResult{Err: fmt.Errorf("cannot parse coverage float from test cmd output: '%s'; error:%s", cleanedOutput, err)}
+	}
+
+	duration := time.Since(start)
+	return TestResult{Duration: duration, Coverage: float32(coverage)}
+}
+
+func getLoc(languages *gocloc.DefinedLanguages, options *gocloc.ClocOptions, paths []string) (*gocloc.Result, error) {
+	// https://github.com/hhatto/gocloc/blob/master/cmd/gocloc/main.go
+	processor := gocloc.NewProcessor(languages, options)
+	result, err := processor.Analyze(paths)
+	if err != nil {
+		return nil, fmt.Errorf("fail gocloc analyze. error: %w", err)
+	}
+	return result, nil
 }

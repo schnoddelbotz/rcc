@@ -41,6 +41,8 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
+	log.SetFlags(0)
+
 	flags := rootCmd.Flags()
 	flags.IntP("workers", "w", 5, "Number of workers")
 	flags.StringP("output", "o", "rcc-output.png", "Plot/Graph PNG output filename")
@@ -48,12 +50,14 @@ func main() {
 	flags.StringP("language", "l", "", "Enables details and coverage for given language")
 	flags.BoolP("debug", "d", false, "Enable debug output")
 	flags.BoolP("open", "O", false, "Open graph upon completion")
+	flags.BoolP("skip-autodetect", "s", false, "Disable language auto detection")
 	flags.StringSliceP("include-languages", "i", []string{}, "Explicitly list languages")
 	// --ramdisk ? -> macos: https://gist.github.com/htr3n/344f06ba2bb20b1056d7d5570fe7f596
 	// only if -l ...:
-	flags.BoolP("cover-unit", "U", true, "Run unit tests (for given --language)")
+	flags.BoolP("no-cover-unit", "U", false, "Run unit tests (for given --language)")
 	flags.BoolP("cover-integration", "I", false, "Run integration tests (for given --language)")
-	flags.BoolP("cover-duration", "D", true, "Include test execution duration in graph")
+	flags.BoolP("no-cover-duration", "D", false, "Do not include duration for coverage runs in graph")
+	// todo: add option to disable LoC
 
 	err := rootCmd.Execute()
 	if err != nil {
@@ -68,19 +72,18 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	tmpPath, _ := cmd.Flags().GetString("tmp")
 	debug, _ := cmd.Flags().GetBool("debug")
 	open, _ := cmd.Flags().GetBool("open")
-	coverU, _ := cmd.Flags().GetBool("cover-unit")
-	coverI, _ := cmd.Flags().GetBool("cover-integration")
-	coverD, _ := cmd.Flags().GetBool("cover-duration")
+	noCoverU, _ := cmd.Flags().GetBool("no-cover-unit")
+	CoverI, _ := cmd.Flags().GetBool("cover-integration")
+	noCoverD, _ := cmd.Flags().GetBool("no-cover-duration")
 	includeLanguages, _ := cmd.Flags().GetStringSlice("include-languages")
+	skipAutoDetect, _ := cmd.Flags().GetBool("skip-autodetect")
 
 	jobOpts := JobOptions{
-		RunColoc:            true,
-		RunColocTests:       true,
-		IncludeLangs:        includeLanguages,
-		TmpPath:             tmpPath,
-		runCoverUnit:        coverU,
-		runCoverIntegration: coverI,
-		includeDuration:     coverD,
+		RunColoc:      true,
+		RunColocTests: true,
+		IncludeLangs:  includeLanguages,
+		TmpPath:       tmpPath,
+		debug:         debug,
 	}
 
 	repoPath, err := os.Getwd()
@@ -90,14 +93,23 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		repoPath = args[0]
 	}
-	langdata := GetLanguage(language)
+
+	langdata := GetLanguage(language, skipAutoDetect, repoPath)
 	if langdata == nil {
 		return fmt.Errorf("invalid --language; currently supported: Go - or leave blank for generic")
 	}
-	if langdata.Description == LanguageGeneric {
-		jobOpts.runCoverUnit = false
-		jobOpts.runCoverIntegration = false
-		jobOpts.includeDuration = false
+	titleParts := ""
+	if langdata.UnitTestCmd != "" && !noCoverU {
+		jobOpts.runCoverUnit = true
+		titleParts = " + Coverage (Unit-Tests)"
+	}
+	if langdata.IntegrationTestCmd != "" && CoverI {
+		jobOpts.runCoverIntegration = true
+		titleParts = " + Coverage (Integration-Tests)"
+	}
+	if (jobOpts.runCoverUnit || jobOpts.runCoverIntegration) && !noCoverD {
+		jobOpts.includeDuration = true
+		titleParts += " + Test Duration"
 	}
 
 	repo, err := NewSourceRepository(repoPath)
@@ -114,8 +126,8 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	runner := NewRunner(repo, langdata, jobOpts)
 	runner.Run(workers, commits)
 
-	title := fmt.Sprintf("%s LoC / Coverage [%s]", filepath.Base(repoPath), langdata.Description)
-	err = NewGnuplotGraph(runner.StatData, title, outfile, langdata.GoclocName, debug, jobOpts).Create()
+	title := fmt.Sprintf("%s LoC %s [%s]", filepath.Base(repoPath), titleParts, langdata.Description)
+	err = NewGnuplotGraph(runner.StatData, title, outfile, langdata.GoclocName, jobOpts).Create()
 	if err != nil {
 		return err
 	}
