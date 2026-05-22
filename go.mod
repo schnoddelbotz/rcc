@@ -1,4 +1,4 @@
-module github.com/schnoddelbotz/retrospective-code-coverage
+module github.com/schnoddelbotz/rcc
 
 go 1.26.3
 
