@@ -52,16 +52,10 @@ func main() {
 	flags.BoolP("open", "O", false, "Open graph upon completion")
 	flags.BoolP("skip-autodetect", "s", false, "Disable language auto detection")
 	flags.StringSliceP("include-languages", "i", []string{}, "Explicitly list languages")
-	// --ramdisk ? -> macos: https://gist.github.com/htr3n/344f06ba2bb20b1056d7d5570fe7f596
 	// only if -l ...:
 	flags.BoolP("no-cover-unit", "U", false, "Run unit tests (for given --language)")
 	flags.BoolP("cover-integration", "I", false, "Run integration tests (for given --language)")
 	flags.BoolP("no-cover-duration", "D", false, "Do not include duration for coverage runs in graph")
-	// todo: add option to disable LoC
-	// todo: output png dimensions
-	// todo: drop cobra?
-	// todo: flags.StringP("cover-unit-command", "C", "", "Override language default / set coverage shell command for --language")
-
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)

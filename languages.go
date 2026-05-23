@@ -22,13 +22,12 @@ const LanguageGeneric = "generic"
 
 var languagesMap = map[string]*Language{
 	"Go": {
-		GoclocName:  "Go",
-		Description: "golang",
-
-		// TODO: Make overrideable via cli:
+		GoclocName:     "Go",
+		Description:    "golang",
 		TestfilesRegex: ".*_test.go",
-		UnitTestCmd:    "go test -coverprofile cover.out ./... >/dev/null && go tool cover -func cover.out | tail -1 | awk '{ print $3 }'",
+		UnitTestCmd:    "go generate ./... >/dev/null ; go test -coverprofile cover.out ./... >/dev/null && go tool cover -func cover.out | tail -1 | awk '{ print $3 }'",
 		// IntegrationTestCmd: "go test -coverprofile cover.out -tags=integration ./... ",
+		// CoverageRegex ???!
 	},
 }
 
