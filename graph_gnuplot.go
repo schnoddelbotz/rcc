@@ -83,34 +83,32 @@ func (g *Graph) gnuplotWriteData(datafile string) error {
 			return outline
 		},
 		"locCols": func(loc *gocloc.Result) string {
-			outline := ""
+			var outline strings.Builder
 			// range over all languages in data set. if entry lacks lang, 0-fill gap.
 			for _, l := range g.statData.languages() {
 				if l == g.language {
 					if lang, exists := loc.Languages[l]; exists {
-						// outline += fmt.Sprintf("%d %d ", lang.Code, lang.Comments)
-						outline += fmt.Sprintf("%d ", lang.Code)
+						fmt.Fprintf(&outline, "%d ", lang.Code)
 					} else {
-						outline += "0 "
-						// outline += "0 0 "
+						outline.WriteString("0 ")
 					}
 					continue
 				}
 				if l == g.language+"ExcludingTests" {
 					if lang, exists := loc.Languages[l]; exists {
-						outline += fmt.Sprintf("%d ", lang.Code)
+						fmt.Fprintf(&outline, "%d ", lang.Code)
 					} else {
-						outline += "0 "
+						outline.WriteString("0 ")
 					}
 					continue
 				}
 				if lang, exists := loc.Languages[l]; exists {
-					outline += fmt.Sprintf("%d ", lang.Code)
+					fmt.Fprintf(&outline, "%d ", lang.Code)
 				} else {
-					outline += "0 "
+					outline.WriteString("0 ")
 				}
 			}
-			return outline
+			return outline.String()
 		},
 	}
 	tpl := template.Must(template.New("gnuplot").Funcs(funcMap).Parse(datTpl))
@@ -153,24 +151,24 @@ func (g *Graph) gnuplotCreateScript(datafile string) string {
 			return ""
 		},
 		"plotArgs": func() string {
-			res := ""
+			var res strings.Builder
 			plotArgFmt := `'%s' using 1:%d t '%s' with linespoints`
 			colNames := g.statData.languages()
 			for column, lang := range colNames {
-				res += fmt.Sprintf(plotArgFmt, datafile, column+2, lang)
-				res += ", \\\n"
+				fmt.Fprintf(&res, plotArgFmt, datafile, column+2, lang)
+				res.WriteString(", \\\n")
 			}
 			if g.jobOptions.runCoverUnit {
 				plotArgFmt = `'%s' using 1:%d t '%s' axis x1y2 with linespoints`
-				res += fmt.Sprintf(plotArgFmt, datafile, len(colNames)+2, "UnitTestCoverage")
-				res += ", \\\n"
+				fmt.Fprintf(&res, plotArgFmt, datafile, len(colNames)+2, "UnitTestCoverage")
+				res.WriteString(", \\\n")
 				if g.jobOptions.includeDuration {
-					res += fmt.Sprintf(plotArgFmt, datafile, len(colNames)+3, "UnitTestDuration")
-					res += ", \\\n"
+					fmt.Fprintf(&res, plotArgFmt, datafile, len(colNames)+3, "UnitTestDuration")
+					res.WriteString(", \\\n")
 				}
 			}
 			// TODO: Add Integration - fix ^ +2, +3 ...
-			return res
+			return res.String()
 		},
 	}
 

@@ -9,6 +9,14 @@ $(CMD): *.go */*.go
 install:
 	go install
 
+git-setup:
+	grep 'make lint test' .git/hooks/pre-push || echo 'make lint test' >> .git/hooks/pre-push
+	chmod +x .git/hooks/pre-push
+
+lint:
+	go fix -diff ./...
+	golangci-lint run
+
 test:
 	go test -race
 
