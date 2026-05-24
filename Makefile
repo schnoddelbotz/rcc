@@ -1,10 +1,13 @@
 
-CMD := retrospective-code-coverage
+CMD := rcc
 
 all: $(CMD)
 
 $(CMD): *.go */*.go
 	go build
+
+install:
+	go install
 
 coverage:
 	go test -race -coverprofile cover.out ./...
@@ -15,4 +18,4 @@ coverage_html: coverage
 
 clean:
 	go clean -testcache
-	rm -rf $(CMD)
+	rm -rf $(CMD) $(CMD)-output.* cover.out

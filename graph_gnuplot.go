@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/hhatto/gocloc"
+	"github.com/schnoddelbotz/rcc/resources"
 )
 
 func (g *Graph) CreateGnuplot() error {
@@ -131,22 +132,9 @@ func (g *Graph) gnuplotWriteData(datafile string) error {
 }
 
 func (g *Graph) gnuplotCreateScript(datafile string) string {
-	scriptTpl := `set title '{{.Title}}'
-        set xlabel 'Date'
-        set timefmt "%Y-%m-%dT%H:%M:%S+02:00"
-        set key left top
-        set xdata time
-        set ytics 500 nomirror
-        set ylabel 'Lines of Code'
-        set y2tics 10 nomirror
-        set y2label '{{y2Label}}' {{y2RangeIfAny}}
-        set term pngcairo
-        set terminal png size 1400,700
-        set output "{{.OutFile}}"
-        plot {{plotArgs}}
-`
-
 	var funcMap = template.FuncMap{
+		"title":   func() string { return g.outfile },
+		"outfile": func() string { return g.title },
 		"y2Label": func() string {
 			label := ""
 			if g.jobOptions.runCoverIntegration || g.jobOptions.runCoverUnit {
@@ -186,18 +174,10 @@ func (g *Graph) gnuplotCreateScript(datafile string) string {
 		},
 	}
 
-	tpl := template.Must(template.New("gnuplot").Funcs(funcMap).Parse(scriptTpl))
-
-	type tplData struct {
-		OutFile string
-		Title   string
-	}
+	tpl := template.Must(template.New("gnuplot").Funcs(funcMap).Parse(resources.GnuplotScriptTemplate))
 
 	buf := bytes.NewBuffer([]byte(``))
-	err := tpl.Execute(buf, tplData{
-		OutFile: g.outfile,
-		Title:   g.title,
-	})
+	err := tpl.Execute(buf, nil)
 	if err != nil {
 		panic(err)
 	}

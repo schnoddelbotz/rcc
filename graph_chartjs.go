@@ -1,28 +1,23 @@
 package main
 
 import (
-	_ "embed"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"os"
+	"time"
+
+	"github.com/schnoddelbotz/rcc/resources"
 )
-
-//go:embed graph_resources/chart.js
-var chartJS string
-
-//go:embed graph_resources/chart.html
-var chartHTML string
 
 type chartjsData struct {
 	Labels   []string         `json:"labels"`
 	Datasets []chartjsDataset `json:"datasets"`
 }
 type chartjsDataset struct {
-	Label           string    `json:"label"`
-	Data            []float32 `json:"data"`
-	borderColor     string    //: Utils.CHART_COLORS.red,
-	backgroundColor string    //: Utils.transparentize(Utils.CHART_COLORS.red, 0.5),
-	YAxisID         string    `json:"yAxisID"` // 'y' / 'y1'
+	Label   string    `json:"label"`
+	Data    []float32 `json:"data"`
+	YAxisID string    `json:"yAxisID"`
 }
 
 func (g *Graph) CreateChartJS(embedJSON, embedChartJS, onlyJSON bool) error {
@@ -35,7 +30,7 @@ func (g *Graph) CreateChartJS(embedJSON, embedChartJS, onlyJSON bool) error {
 func (g *Graph) createJSON() chartjsData {
 	labels := []string{}
 	for _, commit := range g.statData.entries {
-		labels = append(labels, commit.Date.String())
+		labels = append(labels, fmt.Sprintf("%s %s", commit.Date.Format(time.DateOnly), commit.sha[:8]))
 	}
 	datasets := []chartjsDataset{}
 	for _, lang := range g.statData.languages() {
@@ -75,7 +70,7 @@ func (g *Graph) createJSON() chartjsData {
 			})
 		}
 	}
-	// + integration
+	// todo + integration coverage+duration
 	return chartjsData{
 		Labels:   labels,
 		Datasets: datasets,
@@ -98,11 +93,11 @@ func (g *Graph) writeChartHTML(data chartjsData, embedJSON, embedChartJS bool) e
 		"title":           func() string { return g.title },
 		"embedJSON":       func() bool { return embedJSON },
 		"embedChartJS":    func() bool { return embedChartJS },
-		"chartJS":         func() template.JS { return template.JS(chartJS) },
+		"chartJS":         func() template.JS { return template.JS(resources.ChartJS) },
 		"chartData":       func() template.JS { return template.JS(chartjson) },
 		"includeCoverage": func() bool { return g.jobOptions.runCoverUnit || g.jobOptions.runCoverIntegration },
 	}
-	tpl := template.Must(template.New("chartjs").Funcs(funcMap).Parse(chartHTML))
+	tpl := template.Must(template.New("chartjs").Funcs(funcMap).Parse(resources.ChartHTML))
 
 	out, err := os.Create(g.outfile)
 	if err != nil {

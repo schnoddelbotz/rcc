@@ -22,9 +22,12 @@ By default, five parallel workers will be spawned to run analysis in parallel.
 In theory, this should work well for unit tests. For integration tests, it's
 more likely that rcc should be limited to a single worker (see usage below).
 
-rcc can produce graphs in PNG format, requiring [gnuplot](http://www.gnuplot.info/)
-to be installed. Support for HTML/JS output (using a bundled [chartjs](https://www.chartjs.org/))
-is on the roadmap...
+rcc supports multiple output formats for gathered data:
+- HTML (embeds a bundled [chartjs](https://www.chartjs.org/), or links to it).
+- PNG requires [gnuplot](http://www.gnuplot.info/) to be installed.
+- JSON (using the chartjs dataset structure); raw data, no plot.
+Output format is determined by the filename given for output, which defaults
+to `rcc-output.html`.
 
 ## installation
 
@@ -44,9 +47,9 @@ Assuming a Go project in current working directory, to run LoC and unit test cov
 rcc
 ```
 
+This will produce the default graph format (`rcc-output.html`).
 Should project language not be specified and auto-detection fail, `rcc` will only analyse LoC.
 
-The resulting graph will be written to `rcc-output.png` by default.
 Overview of currently supported flags to influence `rcc` behaviour:
 
 ```bash
@@ -54,21 +57,23 @@ Flags:
   -I, --cover-integration           Run integration tests (for given --language)
   -d, --debug                       Enable debug output
   -h, --help                        help for retrospective-code-coverage
+  -J, --html-no-embed-chartjs       Do not embed ChartJS into generated .html, but link it
+  -j, --html-no-embed-json          Do not embed JSON data into generated .html, but link it
   -i, --include-languages strings   Explicitly list languages
   -l, --language string             Enables details and coverage for given language
   -D, --no-cover-duration           Do not include duration for coverage runs in graph
   -U, --no-cover-unit               Run unit tests (for given --language)
   -O, --open                        Open graph upon completion
-  -o, --output string               Plot/Graph PNG output filename (default "rcc-output.png")
+  -o, --output string               Plot/Graph html/json/png output filename (default "rcc-output.html")
   -s, --skip-autodetect             Disable language auto detection
   -t, --tmp string                  Temp directory path to use for history clones (default "/tmp")
   -w, --workers int                 Number of workers (default 5)
 ```
 
-A more custom example - analyses the project at given path, opens the graph upon completion, also
-runs integration tests and only analyses (and graphs) LoC for given languages:
+A more custom example - analyses the project at given path, opens the graph in PNG format upon
+completion, also runs integration tests and only analyses (and graphs) LoC for given languages:
 ```bash
-rcc -OIi Go,JavaScript,HTML /path/to/my/project
+rcc -OIi Go,JavaScript,HTML -o my.png /path/to/my/project
 ```
 
 ## libraries used
@@ -81,13 +86,15 @@ rcc -OIi Go,JavaScript,HTML /path/to/my/project
 
 Fun project, WIP. Open tasks:
 
-- [ ] add JSON output support + HTML output support (template including chartjs, plus embed JSON data)
+- [x] add JSON output support + HTML output support (template including chartjs, plus embed JSON data)
+- [ ] add --coverage-regex, allow using
+      [gitlab examples](https://docs.gitlab.com/ci/testing/code_coverage/coverage_reporting/#coverage-regex-patterns)
+- [ ] finalize integration test inclusion
 - [ ] add option to disable LoC
 - [ ] add option to limit time git history range (time/sha)
 - [ ] output png dimensions
 - [ ] drop cobra?
 - [ ] flag "cover-unit-command", "Override language default / set coverage shell command for --language"
-- [ ] finalize integration test inclusion
 - [ ] add option to create/use ramdisk for tmp git clones
 - [ ] improve test coverage m( ... and add graph as example here
 

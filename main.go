@@ -45,7 +45,7 @@ func main() {
 
 	flags := rootCmd.Flags()
 	flags.IntP("workers", "w", 5, "Number of workers")
-	flags.StringP("output", "o", "rcc-output.png", "Plot/Graph PNG output filename")
+	flags.StringP("output", "o", "rcc-output.html", "Plot/Graph html/json/png output filename")
 	flags.StringP("tmp", "t", os.TempDir(), "Temp directory path to use for history clones")
 	flags.StringP("language", "l", "", "Enables details and coverage for given language")
 	flags.BoolP("debug", "d", false, "Enable debug output")
