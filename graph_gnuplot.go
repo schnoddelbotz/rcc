@@ -1,0 +1,226 @@
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"text/template"
+	"time"
+
+	"github.com/hhatto/gocloc"
+)
+
+func (g *Graph) CreateGnuplot() error {
+	tmpdir, err := os.MkdirTemp(os.TempDir(), "rcc-gp")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = os.RemoveAll(tmpdir)
+		// log.Printf("removed gnuplot tmpdir %s", tmpdir)
+	}()
+	datafile := filepath.Join(tmpdir, "rcc-gc.dat")
+
+	err = g.gnuplotWriteData(datafile)
+	if err != nil {
+		return err
+	}
+
+	script := g.gnuplotCreateScript(datafile)
+
+	if g.jobOptions.debug {
+		dat, _ := os.ReadFile(datafile)
+		fmt.Println(string(dat))
+		fmt.Println(script)
+	}
+
+	err = gnuplotExec(script)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (g *Graph) gnuplotWriteData(datafile string) error {
+	datTpl := `# date                    {{locHeaderLangs}} coverage_unit coverage_integration coverage_unit_duration coverage_integration_duration
+        {{- range .Entries }}
+{{formatDate .Date}} {{locCols .Loc}}{{covCols .}}
+        {{- end }}
+`
+	type tplData struct {
+		Entries   []StatDataEntry
+		Languages []string
+	}
+	var funcMap = template.FuncMap{
+		"formatDate": func(timeStamp time.Time) string {
+			return timeStamp.Format(time.RFC3339Nano)
+		},
+		"locHeaderLangs": func() string {
+			// + COVERAGE FIXME // DURATION
+			return strings.Join(g.statData.languages(), " ")
+		},
+		"covCols": func(sd *StatDataEntry) string {
+			// g.jobOptions.includeDuration affects duration display for both unit and integration tests
+			outline := ""
+			if g.jobOptions.runCoverUnit {
+				outline += fmt.Sprintf("%2f ", sd.CoverageUnit)
+				if g.jobOptions.includeDuration {
+					outline += fmt.Sprintf("%2f ", sd.UnitDuration.Seconds())
+				}
+			}
+			if g.jobOptions.runCoverIntegration {
+				outline += fmt.Sprintf("%2f ", sd.CoverageIntegration)
+				if g.jobOptions.includeDuration {
+					outline += fmt.Sprintf("%2f ", sd.IntegrationDuration.Seconds())
+				}
+			}
+			return outline
+		},
+		"locCols": func(loc *gocloc.Result) string {
+			outline := ""
+			// range over all languages in data set. if entry lacks lang, 0-fill gap.
+			for _, l := range g.statData.languages() {
+				if l == g.language {
+					if lang, exists := loc.Languages[l]; exists {
+						// outline += fmt.Sprintf("%d %d ", lang.Code, lang.Comments)
+						outline += fmt.Sprintf("%d ", lang.Code)
+					} else {
+						outline += "0 "
+						// outline += "0 0 "
+					}
+					continue
+				}
+				if l == g.language+"ExcludingTests" {
+					if lang, exists := loc.Languages[l]; exists {
+						outline += fmt.Sprintf("%d ", lang.Code)
+					} else {
+						outline += "0 "
+					}
+					continue
+				}
+				if lang, exists := loc.Languages[l]; exists {
+					outline += fmt.Sprintf("%d ", lang.Code)
+				} else {
+					outline += "0 "
+				}
+			}
+			return outline
+		},
+	}
+	tpl := template.Must(template.New("gnuplot").Funcs(funcMap).Parse(datTpl))
+
+	fh, err := os.Create(datafile)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = fh.Close() }()
+
+	err = tpl.Execute(fh, tplData{
+		Languages: g.statData.languages(),
+		Entries:   g.statData.entries,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return nil
+}
+
+func (g *Graph) gnuplotCreateScript(datafile string) string {
+	scriptTpl := `set title '{{.Title}}'
+        set xlabel 'Date'
+        set timefmt "%Y-%m-%dT%H:%M:%S+02:00"
+        set key left top
+        set xdata time
+        set ytics 500 nomirror
+        set ylabel 'Lines of Code'
+        set y2tics 10 nomirror
+        set y2label '{{y2Label}}' {{y2RangeIfAny}}
+        set term pngcairo
+        set terminal png size 1400,700
+        set output "{{.OutFile}}"
+        plot {{plotArgs}}
+`
+
+	var funcMap = template.FuncMap{
+		"y2Label": func() string {
+			label := ""
+			if g.jobOptions.runCoverIntegration || g.jobOptions.runCoverUnit {
+				label = "Coverage (%)"
+				if g.jobOptions.includeDuration {
+					// fixme: third axis required if values > 100 ... or switch to minutes?
+					label += " + Test Duration (s)"
+				}
+			}
+			return label
+		},
+		"y2RangeIfAny": func() string {
+			if g.jobOptions.runCoverIntegration || g.jobOptions.runCoverUnit {
+				return "\n        set y2range [0:100]"
+			}
+			return ""
+		},
+		"plotArgs": func() string {
+			res := ""
+			plotArgFmt := `'%s' using 1:%d t '%s' with linespoints`
+			colNames := g.statData.languages()
+			for column, lang := range colNames {
+				res += fmt.Sprintf(plotArgFmt, datafile, column+2, lang)
+				res += ", \\\n"
+			}
+			if g.jobOptions.runCoverUnit {
+				plotArgFmt = `'%s' using 1:%d t '%s' axis x1y2 with linespoints`
+				res += fmt.Sprintf(plotArgFmt, datafile, len(colNames)+2, "UnitTestCoverage")
+				res += ", \\\n"
+				if g.jobOptions.includeDuration {
+					res += fmt.Sprintf(plotArgFmt, datafile, len(colNames)+3, "UnitTestDuration")
+					res += ", \\\n"
+				}
+			}
+			// TODO: Add Integration - fix ^ +2, +3 ...
+			return res
+		},
+	}
+
+	tpl := template.Must(template.New("gnuplot").Funcs(funcMap).Parse(scriptTpl))
+
+	type tplData struct {
+		OutFile string
+		Title   string
+	}
+
+	buf := bytes.NewBuffer([]byte(``))
+	err := tpl.Execute(buf, tplData{
+		OutFile: g.outfile,
+		Title:   g.title,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return buf.String()
+}
+
+func gnuplotExec(script string) error {
+	cmd := exec.Command("gnuplot")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	go func() {
+		defer func() { _ = stdin.Close() }()
+		_, err := io.WriteString(stdin, script)
+		if err != nil {
+			panic(err)
+		}
+	}()
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("gnuplot failed: %w", err)
+	}
+	return nil
+}

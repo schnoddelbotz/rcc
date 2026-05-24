@@ -56,6 +56,10 @@ func main() {
 	flags.BoolP("no-cover-unit", "U", false, "Run unit tests (for given --language)")
 	flags.BoolP("cover-integration", "I", false, "Run integration tests (for given --language)")
 	flags.BoolP("no-cover-duration", "D", false, "Do not include duration for coverage runs in graph")
+
+	flags.BoolP("html-no-embed-chartjs", "J", false, "Do not embed ChartJS into generated .html, but link it")
+	flags.BoolP("html-no-embed-json", "j", false, "Do not embed JSON data into generated .html, but link it")
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -74,6 +78,8 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	noCoverD, _ := cmd.Flags().GetBool("no-cover-duration")
 	includeLanguages, _ := cmd.Flags().GetStringSlice("include-languages")
 	skipAutoDetect, _ := cmd.Flags().GetBool("skip-autodetect")
+	noEmbedJSON, _ := cmd.Flags().GetBool("html-no-embed-json")
+	noEmbedChartJS, _ := cmd.Flags().GetBool("html-no-embed-chartjs")
 
 	jobOpts := JobOptions{
 		RunColoc:      true,
@@ -127,7 +133,7 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	runner.Run(workers, commits)
 
 	title := fmt.Sprintf("%s LoC %s [%s]", filepath.Base(repoPath), titleParts, langdata.Description)
-	err = NewGnuplotGraph(runner.StatData, title, outfile, langdata.GoclocName, jobOpts).Create()
+	err = NewGraph(runner.StatData, title, outfile, langdata.GoclocName, jobOpts, !noEmbedJSON, !noEmbedChartJS).Create()
 	if err != nil {
 		return err
 	}

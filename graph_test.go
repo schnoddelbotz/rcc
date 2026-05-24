@@ -42,8 +42,8 @@ func TestCreateGraph(t *testing.T) {
 	tmpdir := t.TempDir()
 	outfile := filepath.Join(tmpdir, "test_graph.png")
 
-	graph := NewGnuplotGraph(statData, "Test Graph", outfile, "Go", JobOptions{})
-	err := graph.Create()
+	graph := NewGraph(statData, "Test Graph", outfile, "Go", JobOptions{}, false, false)
+	err := graph.CreateGnuplot()
 	require.NoError(t, err, "Create() should not return an error")
 
 	_, err = os.Stat(outfile)

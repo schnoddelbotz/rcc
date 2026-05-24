@@ -1,0 +1,57 @@
+<div>
+  <canvas id="myChart"></canvas>
+</div>
+
+{{if embedChartJS}}
+<script>
+  {{chartJS}}
+</script>
+{{else}}
+<script src="chart.js"></script>
+{{end}}
+
+{{if embedJSON}}
+<script>
+  const chartData = {{chartData}};
+</script>
+{{end}}
+
+<script>
+  const chartOptions =  {
+    responsive: true,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
+    stacked: false,
+    plugins: {
+      title: {
+        display: true,
+        text: '{{title}}'
+      }
+    },
+    scales: {
+      y: {
+        type: 'linear',
+        display: true,
+        position: 'left',
+      },
+{{ if includeCoverage -}}
+      y1: {
+        type: 'linear',
+        display: true,
+        position: 'right',
+
+        // grid line settings
+        grid: {
+          drawOnChartArea: false, // only want the grid lines for one axis to show up
+        },
+      },
+{{ end }}
+    }
+  };
+
+  const ctx = document.getElementById('myChart');
+
+  new Chart(ctx, {type: 'line', data: chartData, options: chartOptions });
+</script>

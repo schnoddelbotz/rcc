@@ -33,3 +33,6 @@ go.work.sum
 /retrospective-code-coverage
 rcc-output.png
 /cover.out
+/my.html
+/my.png
+/my.json
