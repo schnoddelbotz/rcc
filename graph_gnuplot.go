@@ -133,8 +133,8 @@ func (g *Graph) gnuplotWriteData(datafile string) error {
 
 func (g *Graph) gnuplotCreateScript(datafile string) string {
 	var funcMap = template.FuncMap{
-		"title":   func() string { return g.outfile },
-		"outfile": func() string { return g.title },
+		"title":   func() string { return g.title },
+		"outfile": func() string { return g.outfile },
 		"y2Label": func() string {
 			label := ""
 			if g.jobOptions.runCoverIntegration || g.jobOptions.runCoverUnit {

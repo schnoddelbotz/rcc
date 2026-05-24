@@ -9,6 +9,9 @@ $(CMD): *.go */*.go
 install:
 	go install
 
+test:
+	go test -race
+
 coverage:
 	go test -race -coverprofile cover.out ./...
 	go tool cover -func cover.out
