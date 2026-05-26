@@ -42,7 +42,7 @@ func TestCreateGnuplotPNG(t *testing.T) {
 	tmpdir := t.TempDir()
 	outfile := filepath.Join(tmpdir, "test_graph.png")
 
-	graph := NewGraph(statData, "Test Graph", outfile, "Go", JobOptions{debug: true}, false, false)
+	graph := NewGraph(statData, "Test Graph", outfile, "Go", JobOptions{}, false, false)
 	err := graph.Create()
 	require.NoError(t, err, "Create() should not return an error")
 
@@ -63,7 +63,7 @@ func TestCreateChartjsHTML(t *testing.T) {
 	tmpdir := t.TempDir()
 	outfile := filepath.Join(tmpdir, "test_graph.html")
 
-	graph := NewGraph(statData, "Test Graph", outfile, "Go", JobOptions{debug: true}, true, true)
+	graph := NewGraph(statData, "Test Graph", outfile, "Go", JobOptions{}, true, true)
 	err := graph.Create()
 	require.NoError(t, err, "Create() should not return an error")
 
@@ -79,13 +79,13 @@ func TestCreateChartjsJSON(t *testing.T) {
 	tmpdir := t.TempDir()
 	outfile := filepath.Join(tmpdir, "test_graph.json")
 
-	graph := NewGraph(statData, "Test Graph", outfile, "Go", JobOptions{debug: true}, false, false)
+	graph := NewGraph(statData, "Test Graph", outfile, "Go", JobOptions{}, false, false)
 	err := graph.Create()
 	require.NoError(t, err, "Create() should not return an error")
 
 	_, err = os.Stat(outfile)
 	require.NoError(t, err, "Output file should exist")
-	htmlFile, err := os.ReadFile(outfile)
+	jsonFile, err := os.ReadFile(outfile)
 	require.NoError(t, err, "Should be able to read the JSON file")
-	assert.Contains(t, string(htmlFile), `{"labels":["2026-05-25 abc12345"],"datasets":[{"label":"Go"`, "File should contain expected JSON structure")
+	assert.Contains(t, string(jsonFile), "{\"labels\":[\"2026-05-26 abc12345\"],\"datasets\":[{\"label\":\"Go\",", "File should contain expected JSON structure")
 }

@@ -16,6 +16,7 @@ type Language struct {
 
 	UnitTestCmd        string
 	IntegrationTestCmd string
+	CoverageRegex      string
 }
 
 const LanguageGeneric = "generic"
@@ -25,9 +26,9 @@ var languagesMap = map[string]*Language{
 		GoclocName:     "Go",
 		Description:    "golang",
 		TestfilesRegex: ".*_test.go",
-		UnitTestCmd:    "go generate ./... >/dev/null ; go test -coverprofile cover.out ./... >/dev/null && go tool cover -func cover.out | tail -1 | awk '{ print $3 }'",
+		UnitTestCmd:    "go generate ./... ; go test -coverprofile cover.out ./... && go tool cover -func cover.out",
+		CoverageRegex:  `total:\s+\(statements\)\s+\d+.\d+%`,
 		// IntegrationTestCmd: "go test -coverprofile cover.out -tags=integration ./... ",
-		// CoverageRegex ???!
 	},
 }
 

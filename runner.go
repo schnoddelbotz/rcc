@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -133,7 +132,7 @@ func (runner *Runner) startJobInputQueueWorker() {
 		}
 
 		if runner.jobOptions.runCoverUnit {
-			result := runTestCmd(clonePath, runner.language.UnitTestCmd)
+			result := runTestCmd(clonePath, runner.language.UnitTestCmd, runner.language.CoverageRegex)
 			stat.CoverageUnit = result.Coverage
 			stat.UnitDuration = result.Duration
 			if result.Err != nil || runner.jobOptions.debug {
@@ -143,7 +142,7 @@ func (runner *Runner) startJobInputQueueWorker() {
 		}
 
 		if runner.jobOptions.runCoverIntegration {
-			result := runTestCmd(clonePath, runner.language.IntegrationTestCmd)
+			result := runTestCmd(clonePath, runner.language.IntegrationTestCmd, runner.language.CoverageRegex)
 			stat.CoverageIntegration = result.Coverage
 			stat.IntegrationDuration = result.Duration
 			if result.Err != nil || runner.jobOptions.debug {
@@ -199,8 +198,8 @@ func getLoc(languages *gocloc.DefinedLanguages, options *gocloc.ClocOptions, pat
 }
 
 // runTestCmd executes tests in clonePath using command.
-// The shell command must run tests (silently) and return a coverage value (parsable float, trailing % is stripped if any).
-func runTestCmd(clonePath string, command string) TestResult {
+// The shell command must run tests and print a coverage value, extractable via given pattern.
+func runTestCmd(clonePath, command, pattern string) TestResult {
 	start := time.Now()
 
 	cmd := exec.Command("sh", "-c", command)
@@ -210,12 +209,29 @@ func runTestCmd(clonePath string, command string) TestResult {
 		log.Println(err)
 		return TestResult{Err: fmt.Errorf("failed running test command '%s'; error: %s", command, err)}
 	}
-	cleanedOutput := strings.TrimRight(string(output), "%\n")
-	coverage, err := strconv.ParseFloat(cleanedOutput, 32)
-	if err != nil {
-		return TestResult{Err: fmt.Errorf("cannot parse coverage float from test cmd output: '%s'; error:%s", cleanedOutput, err)}
-	}
 
-	duration := time.Since(start)
-	return TestResult{Duration: duration, Coverage: float32(coverage)}
+	return TestResult{
+		Duration: time.Since(start),
+		Coverage: extractCoverage(string(output), pattern),
+	}
+}
+
+// extractCoverage takes output from a coverage command and applies the user-supplied pattern
+// to match the line containing coverage value. To enable usage of same patterns as shown on
+// https://docs.gitlab.com/ci/testing/code_coverage/coverage_reporting/#coverage-regex-patterns
+// ... the same approach is used in here, to extract the real coverage (float) value as in
+// https://gitlab.com/gitlab-org/gitlab/-/blob/5ed55fbc0560cf3433ebbf44c542b9e2e8f1fab1/lib/gitlab/ci/trace/stream.rb#L110
+// Meaning: the user-supplied pattern is NOT required to include a capture group for value extraction.
+func extractCoverage(output, pattern string) float32 {
+	lineRe := regexp.MustCompile(pattern)
+	lineMatch := lineRe.FindString(output)
+	if lineMatch != "" {
+		valRe := regexp.MustCompile(`\d+(\.\d+)?`)
+		valMatch := valRe.FindString(lineMatch)
+		if valMatch != "" {
+			coverage, _ := strconv.ParseFloat(valMatch, 32)
+			return float32(coverage)
+		}
+	}
+	return 0
 }

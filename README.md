@@ -1,6 +1,6 @@
 # rcc (retrospective code coverage + lines of code)
 
-rcc can be used to create a graph/plot of coverage and LoC data based on
+rcc can be used to create a graph/plot of test coverage and LoC data based on
 a project's git commit history. Graph data is gathered by walking the
 commit history, cloning each commit into a temporary directory and running
 LoC and/or unit and/or integration tests on the cloned worktree.
@@ -11,7 +11,7 @@ commands to obtain coverage data must be provided by the user.
 
 Currently built-in support:
 - Go (`go test` for unit tests, `go test -tags=integration` for integration tests)
-- TODO: Python (`pyttest`)
+- TODO: Python (`pytest`)
 - TODO: Java
 
 Dependencies for integration tests should possibly be started before running rcc.
@@ -26,8 +26,8 @@ rcc supports multiple output formats for gathered data:
 - HTML (embeds a bundled [chartjs](https://www.chartjs.org/), or links to it).
 - PNG requires [gnuplot](http://www.gnuplot.info/) to be installed.
 - JSON (using the chartjs dataset structure); raw data, no plot.
-Output format is determined by the filename given for output, which defaults
-to `rcc-output.html`.
+Output format is determined by the filename (extension) given for output, which
+defaults to `rcc-output.html`.
 
 ## installation
 
@@ -48,7 +48,7 @@ rcc
 ```
 
 This will produce the default graph format (`rcc-output.html`).
-Should project language not be specified and auto-detection fail, `rcc` will only analyse LoC.
+Should the project language not be specified and auto-detection fail, `rcc` will only analyse LoC.
 
 Overview of currently supported flags to influence `rcc` behaviour:
 
@@ -87,16 +87,17 @@ rcc -OIi Go,JavaScript,HTML -o my.png /path/to/my/project
 Fun project, WIP. Open tasks:
 
 - [x] add JSON output support + HTML output support (template including chartjs, plus embed JSON data)
-- [ ] add --coverage-regex, allow using
+- [ ] add --coverage-regex flag, allow using
       [gitlab examples](https://docs.gitlab.com/ci/testing/code_coverage/coverage_reporting/#coverage-regex-patterns)
 - [ ] finalize integration test inclusion
 - [ ] add option to disable LoC
-- [ ] add option to limit time git history range (time/sha)
+- [ ] add option to limit time git history --range (time/sha)
 - [ ] output png dimensions
 - [ ] drop cobra?
 - [ ] flag "cover-unit-command", "Override language default / set coverage shell command for --language"
 - [ ] add option to create/use ramdisk for tmp git clones
 - [ ] improve test coverage m( ... and add graph as example here
+- [ ] add JSON --append mode, to extend an exist json ouput file (/w 1 or more commits, based on range)
 
 ## license
 
