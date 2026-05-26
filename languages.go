@@ -7,28 +7,45 @@ import (
 )
 
 type Language struct {
-	GoclocName          string
-	Description         string
-	TestfilesRegex      string
-	TestExecutable      string
-	UnitTestArgs        []string
-	IntegrationTestArgs []string
-
-	UnitTestCmd        string
-	IntegrationTestCmd string
 	CoverageRegex      string
+	Description        string
+	GoclocName         string
+	IntegrationTestCmd string
+	TestfilesRegex     string
+	UnitTestCmd        string
+	AutoDetectFiles    []string
 }
 
 const LanguageGeneric = "generic"
 
 var languagesMap = map[string]*Language{
 	"Go": {
-		GoclocName:     "Go",
-		Description:    "golang",
+		AutoDetectFiles: []string{"go.mod"},
+		CoverageRegex:   `total:\s+\(statements\)\s+\d+.\d+%`,
+		Description:     "golang",
+		GoclocName:      "Go",
+		// IntegrationTestCmd: "go test -coverprofile cover.out -tags=integration ./... ", // YET UNUSED
 		TestfilesRegex: ".*_test.go",
-		UnitTestCmd:    "go generate ./... ; go test -coverprofile cover.out ./... && go tool cover -func cover.out",
-		CoverageRegex:  `total:\s+\(statements\)\s+\d+.\d+%`,
-		// IntegrationTestCmd: "go test -coverprofile cover.out -tags=integration ./... ",
+		UnitTestCmd:    "go test -coverprofile cover.out ./... && go tool cover -func cover.out",
+	},
+	"Python": {
+		AutoDetectFiles: []string{"requirements.txt", "uv.lock", "pyproject.toml"},
+		// CoverageRegex:   `TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$`,
+		CoverageRegex: `TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)`,
+		Description:   "python",
+		GoclocName:    "Python",
+		// IntegrationTestCmd: "go test -coverprofile cover.out -tags=integration ./... ", // YET UNUSED
+		TestfilesRegex: "test_.*\\.py",
+		UnitTestCmd:    "pytest --cov",
+	},
+	"Java": {
+		AutoDetectFiles: []string{"gradlew"}, // + mvn pom...?
+		CoverageRegex:   `Total.*?([0-9]{1,3})%`,
+		Description:     "java",
+		GoclocName:      "Java",
+		// IntegrationTestCmd: "go test -coverprofile cover.out -tags=integration ./... ", // YET UNUSED
+		TestfilesRegex: "test_.*\\.py",
+		UnitTestCmd:    "./gradlew test jacocoTestReport",
 	},
 }
 
@@ -54,9 +71,15 @@ func GetLanguage(userLang string, skipAutoDetect bool, repoPath string) *Languag
 	return &Language{Description: LanguageGeneric}
 }
 
+// autoDetect walks built-in languagesMap and tests for each language's AutoDetectFiles existence.
+// Fix? As map order is random, may return random result if project contains matches from multiple languages.
 func autoDetect(repoPath string) *Language {
-	if _, err := os.Stat(filepath.Join(repoPath, "go.mod")); err == nil {
-		return languagesMap["Go"]
+	for lang, spec := range languagesMap {
+		for _, file := range spec.AutoDetectFiles {
+			if _, err := os.Stat(filepath.Join(repoPath, file)); err == nil {
+				return languagesMap[lang]
+			}
+		}
 	}
 	return nil
 }

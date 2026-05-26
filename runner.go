@@ -132,7 +132,7 @@ func (runner *Runner) startJobInputQueueWorker() {
 		}
 
 		if runner.jobOptions.runCoverUnit {
-			result := runTestCmd(clonePath, runner.language.UnitTestCmd, runner.language.CoverageRegex)
+			result := runTestCmd(clonePath, runner.language.UnitTestCmd, runner.language.CoverageRegex, runner.jobOptions.debug)
 			stat.CoverageUnit = result.Coverage
 			stat.UnitDuration = result.Duration
 			if result.Err != nil || runner.jobOptions.debug {
@@ -142,7 +142,7 @@ func (runner *Runner) startJobInputQueueWorker() {
 		}
 
 		if runner.jobOptions.runCoverIntegration {
-			result := runTestCmd(clonePath, runner.language.IntegrationTestCmd, runner.language.CoverageRegex)
+			result := runTestCmd(clonePath, runner.language.IntegrationTestCmd, runner.language.CoverageRegex, runner.jobOptions.debug)
 			stat.CoverageIntegration = result.Coverage
 			stat.IntegrationDuration = result.Duration
 			if result.Err != nil || runner.jobOptions.debug {
@@ -199,20 +199,22 @@ func getLoc(languages *gocloc.DefinedLanguages, options *gocloc.ClocOptions, pat
 
 // runTestCmd executes tests in clonePath using command.
 // The shell command must run tests and print a coverage value, extractable via given pattern.
-func runTestCmd(clonePath, command, pattern string) TestResult {
+func runTestCmd(clonePath, command, pattern string, debug bool) TestResult {
 	start := time.Now()
 
 	cmd := exec.Command("sh", "-c", command)
 	cmd.Dir = clonePath
 	output, err := cmd.Output()
-	if err != nil {
-		log.Println(err)
-		return TestResult{Err: fmt.Errorf("failed running test command '%s'; error: %s", command, err)}
+	if err != nil && debug {
+		log.Printf("Tests failed in %s with %s:\n%s", clonePath, err, string(output))
+		// pytest will still report coverage....?!
+		// return TestResult{Err: fmt.Errorf("failed running test command '%s'; error: %s", command, err)}
 	}
 
 	return TestResult{
 		Duration: time.Since(start),
 		Coverage: extractCoverage(string(output), pattern),
+		Err:      err,
 	}
 }
 
@@ -224,10 +226,10 @@ func runTestCmd(clonePath, command, pattern string) TestResult {
 // Meaning: the user-supplied pattern is NOT required to include a capture group for value extraction.
 func extractCoverage(output, pattern string) float32 {
 	lineRe := regexp.MustCompile(pattern)
-	lineMatch := lineRe.FindString(output)
-	if lineMatch != "" {
+	lineMatches := lineRe.FindStringSubmatch(output)
+	if len(lineMatches) > 0 {
 		valRe := regexp.MustCompile(`\d+(\.\d+)?`)
-		valMatch := valRe.FindString(lineMatch)
+		valMatch := valRe.FindString(lineMatches[len(lineMatches)-1])
 		if valMatch != "" {
 			coverage, _ := strconv.ParseFloat(valMatch, 32)
 			return float32(coverage)

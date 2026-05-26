@@ -26,6 +26,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -42,6 +44,7 @@ var rootCmd = &cobra.Command{
 
 func main() {
 	log.SetFlags(0)
+	log.Printf("rcc %s", versionInfo())
 
 	flags := rootCmd.Flags()
 	flags.IntP("workers", "w", 5, "Number of workers")
@@ -56,6 +59,9 @@ func main() {
 	flags.BoolP("no-cover-unit", "U", false, "Run unit tests (for given --language)")
 	flags.BoolP("cover-integration", "I", false, "Run integration tests (for given --language)")
 	flags.BoolP("no-cover-duration", "D", false, "Do not include duration for coverage runs in graph")
+	//
+	flags.StringP("cover-unit-cmd", "C", "", "Custom shell command for running unit tests")
+	flags.StringP("cover-integration-cmd", "X", "", "Custom shell command for running unit tests")
 
 	flags.BoolP("html-no-embed-chartjs", "J", false, "Do not embed ChartJS into generated .html, but link it")
 	flags.BoolP("html-no-embed-json", "j", false, "Do not embed JSON data into generated .html, but link it")
@@ -71,7 +77,7 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	outfile, _ := cmd.Flags().GetString("output")
 	language, _ := cmd.Flags().GetString("language")
 	tmpPath, _ := cmd.Flags().GetString("tmp")
-	debug, _ := cmd.Flags().GetBool("debug")
+	printDebug, _ := cmd.Flags().GetBool("debug")
 	open, _ := cmd.Flags().GetBool("open")
 	noCoverU, _ := cmd.Flags().GetBool("no-cover-unit")
 	CoverI, _ := cmd.Flags().GetBool("cover-integration")
@@ -80,13 +86,15 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	skipAutoDetect, _ := cmd.Flags().GetBool("skip-autodetect")
 	noEmbedJSON, _ := cmd.Flags().GetBool("html-no-embed-json")
 	noEmbedChartJS, _ := cmd.Flags().GetBool("html-no-embed-chartjs")
+	coverUnitCmd, _ := cmd.Flags().GetString("cover-unit-cmd")
+	coverIntegrationCmd, _ := cmd.Flags().GetString("cover-integration-cmd")
 
 	jobOpts := JobOptions{
 		RunColoc:      true,
 		RunColocTests: true,
 		IncludeLangs:  includeLanguages,
 		TmpPath:       tmpPath,
-		debug:         debug,
+		debug:         printDebug,
 	}
 
 	repoPath, err := os.Getwd()
@@ -99,16 +107,22 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 
 	langdata := GetLanguage(language, skipAutoDetect, repoPath)
 	if langdata == nil {
-		return fmt.Errorf("invalid --language; currently supported: Go - or leave blank for generic")
+		return fmt.Errorf("invalid --language; currently supported: Go,Python,Java - or leave blank for generic")
 	}
 	titleParts := ""
+	if coverUnitCmd != "" {
+		langdata.UnitTestCmd = coverUnitCmd
+	}
+	if coverIntegrationCmd != "" {
+		langdata.IntegrationTestCmd = coverIntegrationCmd
+	}
 	if langdata.UnitTestCmd != "" && !noCoverU {
-		log.Println("Coverage (unit tests): enabled")
+		log.Printf("Coverage (unit tests): enabled, command: %s", langdata.UnitTestCmd)
 		jobOpts.runCoverUnit = true
 		titleParts = " + Coverage (Unit-Tests)"
 	}
 	if langdata.IntegrationTestCmd != "" && CoverI {
-		log.Println("Coverage (integration tests): enabled")
+		log.Printf("Coverage (integration tests): enabled, command: %s", langdata.IntegrationTestCmd)
 		jobOpts.runCoverIntegration = true
 		titleParts = " + Coverage (Integration-Tests)"
 	}
@@ -117,6 +131,10 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 		jobOpts.includeDuration = true
 		titleParts += " + Test Duration"
 	}
+	if jobOpts.runCoverUnit || jobOpts.runCoverIntegration {
+		log.Printf("Coverage output regex: %s", langdata.CoverageRegex)
+	}
+	log.Printf("LoC test exclusion regex: %s", langdata.TestfilesRegex)
 
 	repo, err := NewSourceRepository(repoPath)
 	if err != nil {
@@ -141,4 +159,25 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	log.Printf("Graph successfully written to: %s", outfile)
 	OpenAsNeeded(open, outfile)
 	return nil
+}
+
+func versionInfo() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "VersionUnknown"
+	}
+	gitrev := getBuildSetting(info, "vcs.revision")
+	if len(gitrev) == 40 {
+		gitrev = gitrev[:8]
+	}
+	return fmt.Sprintf("%s built %s (%s)", gitrev, getBuildSetting(info, "vcs.time"), runtime.Version())
+}
+
+func getBuildSetting(info *debug.BuildInfo, name string) string {
+	for _, v := range info.Settings {
+		if v.Key == name {
+			return v.Value
+		}
+	}
+	return "[?" + name + "?]"
 }
