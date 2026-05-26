@@ -2,6 +2,7 @@
 .idea/
 .vscode/
 /rcc
+/rcc_*
 /cover.out
 /rcc-output.png
 /rcc-output.html

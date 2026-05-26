@@ -21,6 +21,11 @@ lint:
 test:
 	go test -race
 
+cross: lint test
+	GOARCH=arm64 GOOS=darwin  go build -ldflags '-w -s' -o rcc_darwin_arm64
+	GOARCH=amd64 GOOS=linux   go build -ldflags '-w -s' -o rcc_linux_amd64
+	GOARCH=amd64 GOOS=windows go build -ldflags '-w -s' -o rcc_windows_amd64
+
 coverage:
 	go test -race -coverprofile cover.out ./...
 	go tool cover -func cover.out
@@ -30,4 +35,4 @@ coverage_html: coverage
 
 clean:
 	go clean -testcache
-	rm -rf $(CMD) $(CMD)-output.* cover.out
+	rm -rf $(CMD) $(CMD)-output.* cover.out rcc_*
