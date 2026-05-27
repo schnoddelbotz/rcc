@@ -20,13 +20,13 @@ const LanguageGeneric = "generic"
 
 var languagesMap = map[string]*Language{
 	"Go": {
-		AutoDetectFiles: []string{"go.mod"},
-		CoverageRegex:   `total:\s+\(statements\)\s+\d+.\d+%`,
-		Description:     "golang",
-		GoclocName:      "Go",
-		// IntegrationTestCmd: "go test -coverprofile cover.out -tags=integration ./... ", // YET UNUSED
-		TestfilesRegex: ".*_test.go",
-		UnitTestCmd:    "go test -coverprofile cover.out ./... && go tool cover -func cover.out",
+		AutoDetectFiles:    []string{"go.mod"},
+		CoverageRegex:      `total:\s+\(statements\)\s+\d+.\d+%`,
+		Description:        "golang",
+		GoclocName:         "Go",
+		IntegrationTestCmd: "go test -coverprofile cover.out -tags=integration ./... && go tool cover -func cover.out ",
+		TestfilesRegex:     ".*_test.go",
+		UnitTestCmd:        "go test -coverprofile cover.out ./... && go tool cover -func cover.out",
 	},
 	"Python": {
 		AutoDetectFiles: []string{"requirements.txt", "uv.lock", "pyproject.toml"},

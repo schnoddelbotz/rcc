@@ -54,14 +54,15 @@ func main() {
 	flags.BoolP("debug", "d", false, "Enable debug output")
 	flags.BoolP("open", "O", false, "Open graph upon completion")
 	flags.BoolP("skip-autodetect", "s", false, "Disable language auto detection")
-	flags.StringSliceP("include-languages", "i", []string{}, "Explicitly list languages")
+	flags.StringSliceP("include-languages", "i", []string{}, "Explicitly list languages for LoC")
 	// only if -l ...:
-	flags.BoolP("no-cover-unit", "U", false, "Run unit tests (for given --language)")
+	flags.BoolP("no-cover-unit", "U", false, "Do not run unit tests (for given --language)")
 	flags.BoolP("cover-integration", "I", false, "Run integration tests (for given --language)")
 	flags.BoolP("no-cover-duration", "D", false, "Do not include duration for coverage runs in graph")
 	//
 	flags.StringP("cover-unit-cmd", "C", "", "Custom shell command for running unit tests")
-	flags.StringP("cover-integration-cmd", "X", "", "Custom shell command for running unit tests")
+	flags.StringP("cover-integration-cmd", "X", "", "Custom shell command for running integration tests")
+	flags.StringP("cover-regex", "R", "", "Custom regex to extract coverage value from test command output")
 
 	flags.BoolP("html-no-embed-chartjs", "J", false, "Do not embed ChartJS into generated .html, but link it")
 	flags.BoolP("html-no-embed-json", "j", false, "Do not embed JSON data into generated .html, but link it")
@@ -88,6 +89,7 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	noEmbedChartJS, _ := cmd.Flags().GetBool("html-no-embed-chartjs")
 	coverUnitCmd, _ := cmd.Flags().GetString("cover-unit-cmd")
 	coverIntegrationCmd, _ := cmd.Flags().GetString("cover-integration-cmd")
+	customCoverageRegex, _ := cmd.Flags().GetString("cover-regex")
 
 	jobOpts := JobOptions{
 		RunColoc:      true,
@@ -115,6 +117,9 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	}
 	if coverIntegrationCmd != "" {
 		langdata.IntegrationTestCmd = coverIntegrationCmd
+	}
+	if customCoverageRegex != "" {
+		langdata.CoverageRegex = customCoverageRegex
 	}
 	if langdata.UnitTestCmd != "" && !noCoverU {
 		log.Printf("Coverage (unit tests): enabled, command: %s", langdata.UnitTestCmd)

@@ -158,16 +158,29 @@ func (g *Graph) gnuplotCreateScript(datafile string) string {
 				fmt.Fprintf(&res, plotArgFmt, datafile, column+2, lang)
 				res.WriteString(", \\\n")
 			}
+			covCol := len(colNames) + 2
 			if g.jobOptions.runCoverUnit {
 				plotArgFmt = `'%s' using 1:%d t '%s' axis x1y2 with linespoints`
-				fmt.Fprintf(&res, plotArgFmt, datafile, len(colNames)+2, "UnitTestCoverage")
+				fmt.Fprintf(&res, plotArgFmt, datafile, covCol, "UnitTestCoverage")
 				res.WriteString(", \\\n")
+				covCol++
 				if g.jobOptions.includeDuration {
 					fmt.Fprintf(&res, plotArgFmt, datafile, len(colNames)+3, "UnitTestDuration")
 					res.WriteString(", \\\n")
+					covCol++
 				}
 			}
-			// TODO: Add Integration - fix ^ +2, +3 ...
+			if g.jobOptions.runCoverIntegration {
+				plotArgFmt = `'%s' using 1:%d t '%s' axis x1y2 with linespoints`
+				fmt.Fprintf(&res, plotArgFmt, datafile, covCol, "IntegrationTestCoverage")
+				res.WriteString(", \\\n")
+				covCol++
+				if g.jobOptions.includeDuration {
+					fmt.Fprintf(&res, plotArgFmt, datafile, covCol, "IntegrationTestDuration")
+					res.WriteString(", \\\n")
+					covCol++
+				}
+			}
 			return res.String()
 		},
 	}

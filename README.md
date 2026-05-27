@@ -6,13 +6,16 @@ commit history, cloning each commit into a temporary directory and running
 LoC and/or unit and/or integration tests on the cloned worktree.
 
 It supports (and tries to auto-detect) few built-in programming languages
-and their commonly used coverage tools. For other languages, relevant
-commands to obtain coverage data must be provided by the user.
+and their commonly used coverage tools. For other languages or different needs,
+relevant commands to obtain coverage can be provided by the user. Same applies
+to regex used to extract coverage value from test output - regexes documented
+by [gitlab](https://docs.gitlab.com/ci/testing/code_coverage/coverage_reporting/#coverage-regex-patterns)
+should generally work.
 
-Currently built-in support:
+Currently [built-in support](languages.go):
 - Go (`go test` for unit tests, `go test -tags=integration` for integration tests)
-- TODO: Python (`pytest`)
-- TODO: Java
+- Python (`pytest` / [pytest-cov](https://pypi.org/project/pytest-cov/))
+- Java (Gradle / jacoco)
 
 Dependencies for integration tests should possibly be started before running rcc.
 Alternatively, built-in defaults can be overridden by specifying custom commands
@@ -54,20 +57,23 @@ Overview of currently supported flags to influence `rcc` behaviour:
 
 ```bash
 Flags:
-  -I, --cover-integration           Run integration tests (for given --language)
-  -d, --debug                       Enable debug output
-  -h, --help                        help for retrospective-code-coverage
-  -J, --html-no-embed-chartjs       Do not embed ChartJS into generated .html, but link it
-  -j, --html-no-embed-json          Do not embed JSON data into generated .html, but link it
-  -i, --include-languages strings   Explicitly list languages
-  -l, --language string             Enables details and coverage for given language
-  -D, --no-cover-duration           Do not include duration for coverage runs in graph
-  -U, --no-cover-unit               Run unit tests (for given --language)
-  -O, --open                        Open graph upon completion
-  -o, --output string               Plot/Graph html/json/png output filename (default "rcc-output.html")
-  -s, --skip-autodetect             Disable language auto detection
-  -t, --tmp string                  Temp directory path to use for history clones (default "/tmp")
-  -w, --workers int                 Number of workers (default 5)
+  -I, --cover-integration              Run integration tests (for given --language)
+  -X, --cover-integration-cmd string   Custom shell command for running integration tests
+  -R, --cover-regex string             Custom regex to extract coverage value from test command output
+  -C, --cover-unit-cmd string          Custom shell command for running unit tests
+  -d, --debug                          Enable debug output
+  -h, --help                           help for retrospective-code-coverage
+  -J, --html-no-embed-chartjs          Do not embed ChartJS into generated .html, but link it
+  -j, --html-no-embed-json             Do not embed JSON data into generated .html, but link it
+  -i, --include-languages strings      Explicitly list languages for LoC
+  -l, --language string                Enables details and coverage for given language
+  -D, --no-cover-duration              Do not include duration for coverage runs in graph
+  -U, --no-cover-unit                  Do not run unit tests (for given --language)
+  -O, --open                           Open graph upon completion
+  -o, --output string                  Plot/Graph html/json/png output filename (default "rcc-output.html")
+  -s, --skip-autodetect                Disable language auto detection
+  -t, --tmp string                     Temp directory path to use for history clones (default "/tmp")
+  -w, --workers int                    Number of workers (default 5)
 ```
 
 A more custom example - analyses the project at given path, opens the graph in PNG format upon
@@ -86,15 +92,10 @@ rcc -OIi Go,JavaScript,HTML -o my.png /path/to/my/project
 
 Fun project, WIP. Open tasks:
 
-- [x] add JSON output support + HTML output support (template including chartjs, plus embed JSON data)
-- [ ] add --coverage-regex flag, allow using
-      [gitlab examples](https://docs.gitlab.com/ci/testing/code_coverage/coverage_reporting/#coverage-regex-patterns)
-- [ ] finalize integration test inclusion
 - [ ] add option to disable LoC
 - [ ] add option to limit time git history --range (time/sha)
-- [ ] output png dimensions
+- [ ] add cli flag: output png dimensions
 - [ ] drop cobra?
-- [ ] flag "cover-unit-command", "Override language default / set coverage shell command for --language"
 - [ ] add option to create/use ramdisk for tmp git clones
 - [ ] improve test coverage m( ... and add graph as example here
 - [ ] add JSON --append mode, to extend an exist json ouput file (/w 1 or more commits, based on range)

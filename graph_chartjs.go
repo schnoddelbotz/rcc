@@ -70,7 +70,28 @@ func (g *Graph) createJSON() chartjsData {
 			})
 		}
 	}
-	// todo + integration coverage+duration
+	if g.jobOptions.runCoverIntegration {
+		ldata := []float32{}
+		for _, commit := range g.statData.entries {
+			ldata = append(ldata, commit.CoverageIntegration)
+		}
+		datasets = append(datasets, chartjsDataset{
+			Label:   "CoverageIntegrationTests",
+			Data:    ldata,
+			YAxisID: "y1",
+		})
+		if g.jobOptions.includeDuration {
+			ddata := []float32{}
+			for _, commit := range g.statData.entries {
+				ddata = append(ddata, float32(commit.IntegrationDuration.Seconds()))
+			}
+			datasets = append(datasets, chartjsDataset{
+				Label:   "CoverageIntegrationDuration",
+				Data:    ddata,
+				YAxisID: "y1",
+			})
+		}
+	}
 	return chartjsData{
 		Labels:   labels,
 		Datasets: datasets,
