@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -226,13 +227,17 @@ func runTestCmd(clonePath, command, pattern string, debug bool) TestResult {
 // Meaning: the user-supplied pattern is NOT required to include a capture group for value extraction.
 func extractCoverage(output, pattern string) float32 {
 	lineRe := regexp.MustCompile(pattern)
-	lineMatches := lineRe.FindStringSubmatch(output)
-	if len(lineMatches) > 0 {
-		valRe := regexp.MustCompile(`\d+(\.\d+)?`)
-		valMatch := valRe.FindString(lineMatches[len(lineMatches)-1])
-		if valMatch != "" {
-			coverage, _ := strconv.ParseFloat(valMatch, 32)
-			return float32(coverage)
+	lines := strings.Split(output, "\n")
+	for lineNo := len(lines) - 1; lineNo > -1; lineNo-- {
+		lineMatches := lineRe.FindStringSubmatch(lines[lineNo])
+		if len(lineMatches) > 0 {
+			valRe := regexp.MustCompile(`\d+(\.\d+)?`)
+			line := strings.TrimSpace(lineMatches[len(lineMatches)-1])
+			valMatch := valRe.FindString(line)
+			if valMatch != "" {
+				coverage, _ := strconv.ParseFloat(valMatch, 32)
+				return float32(coverage)
+			}
 		}
 	}
 	return 0

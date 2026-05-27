@@ -30,10 +30,9 @@ var languagesMap = map[string]*Language{
 	},
 	"Python": {
 		AutoDetectFiles: []string{"requirements.txt", "uv.lock", "pyproject.toml"},
-		// CoverageRegex:   `TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$`,
-		CoverageRegex: `TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)`,
-		Description:   "python",
-		GoclocName:    "Python",
+		CoverageRegex:   `TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$`,
+		Description:     "python",
+		GoclocName:      "Python",
 		// IntegrationTestCmd: "go test -coverprofile cover.out -tags=integration ./... ", // YET UNUSED
 		TestfilesRegex: "test_.*\\.py",
 		UnitTestCmd:    "pytest --cov",
