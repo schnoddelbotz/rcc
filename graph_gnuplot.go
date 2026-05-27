@@ -202,15 +202,22 @@ func gnuplotExec(script string) error {
 	if err != nil {
 		return err
 	}
+
+	errChan := make(chan error, 1)
+
 	go func() {
 		defer func() { _ = stdin.Close() }()
 		_, err := io.WriteString(stdin, script)
-		if err != nil {
-			panic(err)
-		}
+		errChan <- err
 	}()
+
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("gnuplot failed: %w", err)
 	}
+
+	if err := <-errChan; err != nil {
+		return fmt.Errorf("failed to write gnuplot script: %w", err)
+	}
+
 	return nil
 }
