@@ -178,7 +178,6 @@ func (g *Graph) gnuplotCreateScript(datafile string) string {
 				if g.jobOptions.includeDuration {
 					fmt.Fprintf(&res, plotArgFmt, datafile, covCol, "IntegrationTestDuration")
 					res.WriteString(", \\\n")
-					covCol++
 				}
 			}
 			return res.String()

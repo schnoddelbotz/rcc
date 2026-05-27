@@ -11,9 +11,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testDate, _ = time.Parse("2006-01-02", "2026-05-26")
 var testEntry = StatDataEntry{
 	sha:  "abc123456",
-	Date: time.Now(),
+	Date: testDate,
 	Loc: &gocloc.Result{
 		Languages: map[string]*gocloc.Language{
 			"Go": {
