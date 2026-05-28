@@ -96,11 +96,16 @@ func (runner *Runner) startBackgroundWorkers(workers int, hashes []string) {
 	}()
 
 	go func() {
-		for runner.jobsDone.Load() != uint32(len(hashes)) {
-			time.Sleep(200 * time.Millisecond)
-			fmt.Printf("Processed %d of %d\r", runner.jobsDone.Load(), len(hashes))
+		numHashes := uint32(len(hashes))
+		var last uint32
+		for runner.jobsDone.Load() != numHashes {
+			time.Sleep(5 * time.Second)
+			now := runner.jobsDone.Load()
+			if now != last {
+				log.Printf("Processed %d of %d commits", now, numHashes)
+				last = now
+			}
 		}
-		log.Printf("Finished processing %d commits", len(hashes))
 	}()
 }
 

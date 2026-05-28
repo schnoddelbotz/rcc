@@ -38,6 +38,7 @@ type CliArgs struct {
 	noCoverUnit        bool
 	noEmbedChartJS     bool
 	noEmbedJSON        bool
+	logTimestamps      bool
 	open               bool
 	printDebug         bool
 	skipAutoDetect     bool
@@ -57,20 +58,22 @@ type CliArgs struct {
 }
 
 func main() {
-	if err := runRCC(getCliArgs()); err != nil {
+	log.SetFlags(0)
+	if err := runRCC(getCliArgs(pflag.ExitOnError)); err != nil {
 		log.Fatalf("ERROR: %s", err)
 	}
 }
 
-func getCliArgs() CliArgs {
+func getCliArgs(errorHandling pflag.ErrorHandling) CliArgs {
 	opt := CliArgs{}
-	f := pflag.NewFlagSet("rcc", pflag.ExitOnError)
+	f := pflag.NewFlagSet("rcc", errorHandling)
 	f.BoolVarP(&opt.doCoverIntegration, "cover-integration", "I", false, "Run integration tests (for given --language)")
 	f.BoolVarP(&opt.noCoverDuration, "no-cover-duration", "D", false, "Do not include duration for coverage runs in graph")
 	f.BoolVarP(&opt.noCoverUnit, "no-cover-unit", "U", false, "Do not run unit tests (for given --language)")
 	f.BoolVarP(&opt.noEmbedChartJS, "html-no-embed-chartjs", "J", false, "Do not embed ChartJS into generated .html, but link it")
 	f.BoolVarP(&opt.noEmbedJSON, "html-no-embed-json", "j", false, "Do not embed JSON data into generated .html, but link it")
 	f.BoolVarP(&opt.open, "open", "O", false, "Open graph upon completion")
+	f.BoolVarP(&opt.logTimestamps, "timestamps", "T", false, "Timestamp console log output")
 	f.BoolVarP(&opt.printDebug, "debug", "d", false, "Enable debug output")
 	f.BoolVarP(&opt.printVersionOnly, "version", "v", false, "Print rcc version and exit")
 	f.BoolVarP(&opt.skipAutoDetect, "skip-autodetect", "s", false, "Disable language auto detection")
@@ -83,17 +86,17 @@ func getCliArgs() CliArgs {
 	f.StringVarP(&opt.outfile, "output", "o", "rcc-output.html", "Plot/Graph html/json/png output filename")
 	f.StringVarP(&opt.tmpPath, "tmp", "t", os.TempDir(), "Temp directory path to use for history clones")
 	f.Usage = func() {
-		fmt.Println("Retrospective Code Coverage (rcc)  walks a local git repo's history  and collects")
-		fmt.Println("lines of code (LoC) and test coverage statistics data for each commit on its way.")
-		fmt.Println("Collected data can be plotted as HTML (default)  or PNG  and be exported as JSON.")
-		fmt.Println("Without an  REPOSITORY  argument,  rcc will analyze the current directory's repo.")
-		fmt.Println("For more details, see https://github.com/schnoddelbotz/rcc")
-		fmt.Println()
-		fmt.Println("Usage:")
-		fmt.Println("  rcc [flags] [REPOSITORY]")
-		fmt.Println()
-		fmt.Println("Flags:")
-		fmt.Println(f.FlagUsages())
+		log.Println("Retrospective Code Coverage (rcc)  walks a local git repo's history  and collects")
+		log.Println("lines of code (LoC) and test coverage statistics data for each commit on its way.")
+		log.Println("Collected data can be plotted as HTML (default)  or PNG  and be exported as JSON.")
+		log.Println("Without an  REPOSITORY  argument,  rcc will analyze the current directory's repo.")
+		log.Println("For more details, see https://github.com/schnoddelbotz/rcc")
+		log.Println()
+		log.Println("Usage:")
+		log.Println("  rcc [flags] [REPOSITORY]")
+		log.Println()
+		log.Println("Flags:")
+		log.Println(f.FlagUsages())
 	}
 	_ = f.Parse(os.Args[1:])
 	opt.argv = f.Args()
@@ -101,10 +104,12 @@ func getCliArgs() CliArgs {
 }
 
 func runRCC(args CliArgs) error {
-	log.SetFlags(0)
 	log.Print(version())
 	if args.printVersionOnly {
 		return nil
+	}
+	if args.logTimestamps {
+		log.SetFlags(log.LstdFlags)
 	}
 
 	repoPath, err := os.Getwd()

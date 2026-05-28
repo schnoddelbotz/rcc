@@ -62,7 +62,6 @@ Flags:
   -R, --cover-regex string             Custom regex to extract coverage value from test command output
   -C, --cover-unit-cmd string          Custom shell command for running unit tests
   -d, --debug                          Enable debug output
-  -h, --help                           help for retrospective-code-coverage
   -J, --html-no-embed-chartjs          Do not embed ChartJS into generated .html, but link it
   -j, --html-no-embed-json             Do not embed JSON data into generated .html, but link it
   -i, --include-languages strings      Explicitly list languages for LoC
@@ -72,7 +71,9 @@ Flags:
   -O, --open                           Open graph upon completion
   -o, --output string                  Plot/Graph html/json/png output filename (default "rcc-output.html")
   -s, --skip-autodetect                Disable language auto detection
+  -T, --timestamps                     Timestamp console log output
   -t, --tmp string                     Temp directory path to use for history clones (default "/tmp")
+  -v, --version                        Print rcc version and exit
   -w, --workers int                    Number of workers (default 5)
 ```
 
@@ -92,6 +93,7 @@ rcc -OIi Go,JavaScript,HTML -o my.png /path/to/my/project
 
 Fun project, WIP. Open tasks:
 
+- [ ] fix: --branch option required; uses hard-coded "main" :/
 - [ ] add option to disable LoC
 - [ ] add option to limit time git history --range (time/sha)
 - [ ] add cli flag: output png dimensions

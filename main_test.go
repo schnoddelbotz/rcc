@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -12,12 +15,22 @@ import (
 func TestGetCliArgs(t *testing.T) {
 	os.Args = []string{"foo", "bar", "-v"}
 
-	args := getCliArgs()
+	args := getCliArgs(pflag.ExitOnError)
 
 	assert.Equal(t, []string{"bar"}, args.argv)
 	assert.True(t, args.printVersionOnly)
 }
 
+func TestGetHelp(t *testing.T) {
+	os.Args = []string{"foo", "-h"}
+	buf := bytes.NewBuffer(nil)
+	log.SetOutput(buf)
+
+	_ = getCliArgs(pflag.ContinueOnError)
+
+	assert.Contains(t, buf.String(), "Retrospective Code Coverage (rcc)  walks a local git repo")
+	assert.Contains(t, buf.String(), "-I, --cover-integration")
+}
 func TestGetVersionOnly(t *testing.T) {
 	err := runRCC(CliArgs{printVersionOnly: true})
 	assert.Nil(t, err)

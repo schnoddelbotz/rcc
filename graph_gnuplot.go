@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -35,8 +36,8 @@ func (g *Graph) CreateGnuplot() error {
 
 	if g.jobOptions.debug {
 		dat, _ := os.ReadFile(datafile)
-		fmt.Println(string(dat))
-		fmt.Println(script)
+		log.Println(string(dat))
+		log.Println(script)
 	}
 
 	err = gnuplotExec(script)
