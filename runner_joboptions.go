@@ -4,24 +4,24 @@ import "log"
 
 // JobOptions ... is partially redundant with CliArgs. fix.
 type JobOptions struct {
-	RunColoc            bool
-	RunColocTests       bool
-	runCoverUnit        bool
-	runCoverIntegration bool
-	includeDuration     bool
-	IncludeLangs        []string
-	TmpPath             string
 	debug               bool
+	includeDuration     bool
+	includeLanguages    []string
+	runColoc            bool
+	runColocTests       bool
+	runCoverIntegration bool
+	runCoverUnit        bool
 	titleParts          string
+	tmpPath             string
 }
 
 func getJobOptions(opts CliArgs, langdata *Language) JobOptions {
 	jobOpts := JobOptions{
-		RunColoc:      true,
-		RunColocTests: true,
-		IncludeLangs:  opts.includeLanguages,
-		TmpPath:       opts.tmpPath,
-		debug:         opts.printDebug,
+		runColoc:         true,
+		runColocTests:    true,
+		includeLanguages: opts.includeLanguages,
+		tmpPath:          opts.tmpPath,
+		debug:            opts.printDebug,
 	}
 
 	titleParts := ""
@@ -34,17 +34,17 @@ func getJobOptions(opts CliArgs, langdata *Language) JobOptions {
 	if opts.customCoverageRegex != "" {
 		langdata.CoverageRegex = opts.customCoverageRegex
 	}
-	if langdata.UnitTestCmd != "" && !opts.noCoverU {
+	if langdata.UnitTestCmd != "" && !opts.noCoverUnit {
 		log.Printf("Coverage (unit tests): enabled, command: %s", langdata.UnitTestCmd)
 		jobOpts.runCoverUnit = true
 		titleParts = " + Coverage (Unit-Tests)"
 	}
-	if langdata.IntegrationTestCmd != "" && opts.CoverI {
+	if langdata.IntegrationTestCmd != "" && opts.doCoverIntegration {
 		log.Printf("Coverage (integration tests): enabled, command: %s", langdata.IntegrationTestCmd)
 		jobOpts.runCoverIntegration = true
 		titleParts = " + Coverage (Integration-Tests)"
 	}
-	if (jobOpts.runCoverUnit || jobOpts.runCoverIntegration) && !opts.noCoverD {
+	if (jobOpts.runCoverUnit || jobOpts.runCoverIntegration) && !opts.noCoverDuration {
 		log.Println("Graphing of coverage test duration: enabled")
 		jobOpts.includeDuration = true
 		titleParts += " + Test Duration"

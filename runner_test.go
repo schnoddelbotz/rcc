@@ -44,9 +44,9 @@ func TestRunnerAgainstSelf(t *testing.T) {
 	require.Nil(t, err)
 
 	runner := NewRunner(repo, lang, JobOptions{
-		RunColoc:      true,
-		RunColocTests: true,
-		IncludeLangs:  []string{"Go"},
+		runColoc:         true,
+		runColocTests:    true,
+		includeLanguages: []string{"Go"},
 	})
 	runner.Run(5, []string{knownSHA})
 

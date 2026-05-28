@@ -1,25 +1,25 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 )
 
-func OpenAsNeeded(doit bool, path string) {
+func OpenAsNeeded(doit bool, path string) error {
 	if !doit {
-		return
+		return nil
 	}
 	if openCmd := getOpenCmd(path); openCmd != nil {
 		err := openCmd.Start()
 		if err != nil {
-			log.Printf("Failed to open %s: %s", path, err)
+			return fmt.Errorf("failed to open %s: %s", path, err)
 		}
-		return
+		return nil
 	}
-	log.Printf("Don't know how to open output on this platform.")
+	return fmt.Errorf("don't know how to open output on this platform")
 }
 
 func getOpenCmd(path string) *exec.Cmd {

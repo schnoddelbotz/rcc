@@ -50,7 +50,7 @@ func NewRunner(repo *SourceRepository, language *Language, options JobOptions) *
 func (runner *Runner) Run(workers int, hashes []string) {
 	var err error
 	// create tmpDir root, shared by all workers
-	runner.tmpDir, err = os.MkdirTemp(runner.jobOptions.TmpPath, "rcc")
+	runner.tmpDir, err = os.MkdirTemp(runner.jobOptions.tmpPath, "rcc")
 	if err != nil {
 		panic(err)
 	}
@@ -117,7 +117,7 @@ func (runner *Runner) startJobInputQueueWorker() {
 		}
 		stat := StatDataEntry{Date: commitTime, sha: sha}
 
-		if runner.jobOptions.RunColoc {
+		if runner.jobOptions.runColoc {
 			stat.Loc = runner.runCloc(clonePath, languages)
 		}
 
@@ -151,7 +151,7 @@ func (runner *Runner) startJobInputQueueWorker() {
 
 func (runner *Runner) runCloc(clonePath string, languages *gocloc.DefinedLanguages) *gocloc.Result {
 	clocOpts := gocloc.NewClocOptions() // HERE ?!?!
-	for _, x := range runner.jobOptions.IncludeLangs {
+	for _, x := range runner.jobOptions.includeLanguages {
 		clocOpts.IncludeLangs[x] = struct{}{}
 	}
 
@@ -161,7 +161,7 @@ func (runner *Runner) runCloc(clonePath string, languages *gocloc.DefinedLanguag
 		return nil
 	}
 
-	if runner.jobOptions.RunColocTests {
+	if runner.jobOptions.runColocTests {
 		// second run for tests - exclude target language's test files
 		clocOpts.IncludeLangs[runner.language.GoclocName] = struct{}{}
 		clocOpts.ReNotMatch = regexp.MustCompile(runner.language.TestfilesRegex)

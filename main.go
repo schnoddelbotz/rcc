@@ -34,15 +34,15 @@ import (
 )
 
 type CliArgs struct {
-	CoverI           bool
-	noCoverD         bool
-	noCoverU         bool
-	noEmbedChartJS   bool
-	noEmbedJSON      bool
-	open             bool
-	printDebug       bool
-	skipAutoDetect   bool
-	printVersionOnly bool
+	doCoverIntegration bool
+	noCoverDuration    bool
+	noCoverUnit        bool
+	noEmbedChartJS     bool
+	noEmbedJSON        bool
+	open               bool
+	printDebug         bool
+	skipAutoDetect     bool
+	printVersionOnly   bool
 
 	workers int
 
@@ -59,31 +59,32 @@ type CliArgs struct {
 
 func main() {
 	if err := runRCC(getCliArgs()); err != nil {
-		log.Fatal(err)
+		log.Fatalf("ERROR: %s", err)
 	}
 }
 
 func getCliArgs() CliArgs {
 	opt := CliArgs{}
-	pflag.BoolVarP(&opt.CoverI, "cover-integration", "I", false, "Run integration tests (for given --language)")
-	pflag.BoolVarP(&opt.noCoverD, "no-cover-duration", "D", false, "Do not include duration for coverage runs in graph")
-	pflag.BoolVarP(&opt.noCoverU, "no-cover-unit", "U", false, "Do not run unit tests (for given --language)")
-	pflag.BoolVarP(&opt.noEmbedChartJS, "html-no-embed-chartjs", "J", false, "Do not embed ChartJS into generated .html, but link it")
-	pflag.BoolVarP(&opt.noEmbedJSON, "html-no-embed-json", "j", false, "Do not embed JSON data into generated .html, but link it")
-	pflag.BoolVarP(&opt.open, "open", "O", false, "Open graph upon completion")
-	pflag.BoolVarP(&opt.printDebug, "debug", "d", false, "Enable debug output")
-	pflag.BoolVarP(&opt.printVersionOnly, "version", "v", false, "Print rcc version and exit")
-	pflag.BoolVarP(&opt.skipAutoDetect, "skip-autodetect", "s", false, "Disable language auto detection")
-	pflag.IntVarP(&opt.workers, "workers", "w", 5, "Number of workers")
-	pflag.StringSliceVarP(&opt.includeLanguages, "include-languages", "i", []string{}, "Explicitly list languages for LoC")
-	pflag.StringVarP(&opt.coverIntegrationCmd, "cover-integration-cmd", "X", "", "Custom shell command for running integration tests")
-	pflag.StringVarP(&opt.coverUnitCmd, "cover-unit-cmd", "C", "", "Custom shell command for running unit tests")
-	pflag.StringVarP(&opt.customCoverageRegex, "cover-regex", "R", "", "Custom regex to extract coverage value from test command output")
-	pflag.StringVarP(&opt.language, "language", "l", "", "Enables details and coverage for given language")
-	pflag.StringVarP(&opt.outfile, "output", "o", "rcc-output.html", "Plot/Graph html/json/png output filename")
-	pflag.StringVarP(&opt.tmpPath, "tmp", "t", os.TempDir(), "Temp directory path to use for history clones")
-	pflag.Parse()
-	opt.argv = pflag.Args()
+	f := pflag.NewFlagSet("rcc", pflag.ExitOnError)
+	f.BoolVarP(&opt.doCoverIntegration, "cover-integration", "I", false, "Run integration tests (for given --language)")
+	f.BoolVarP(&opt.noCoverDuration, "no-cover-duration", "D", false, "Do not include duration for coverage runs in graph")
+	f.BoolVarP(&opt.noCoverUnit, "no-cover-unit", "U", false, "Do not run unit tests (for given --language)")
+	f.BoolVarP(&opt.noEmbedChartJS, "html-no-embed-chartjs", "J", false, "Do not embed ChartJS into generated .html, but link it")
+	f.BoolVarP(&opt.noEmbedJSON, "html-no-embed-json", "j", false, "Do not embed JSON data into generated .html, but link it")
+	f.BoolVarP(&opt.open, "open", "O", false, "Open graph upon completion")
+	f.BoolVarP(&opt.printDebug, "debug", "d", false, "Enable debug output")
+	f.BoolVarP(&opt.printVersionOnly, "version", "v", false, "Print rcc version and exit")
+	f.BoolVarP(&opt.skipAutoDetect, "skip-autodetect", "s", false, "Disable language auto detection")
+	f.IntVarP(&opt.workers, "workers", "w", 5, "Number of workers")
+	f.StringSliceVarP(&opt.includeLanguages, "include-languages", "i", []string{}, "Explicitly list languages for LoC")
+	f.StringVarP(&opt.coverIntegrationCmd, "cover-integration-cmd", "X", "", "Custom shell command for running integration tests")
+	f.StringVarP(&opt.coverUnitCmd, "cover-unit-cmd", "C", "", "Custom shell command for running unit tests")
+	f.StringVarP(&opt.customCoverageRegex, "cover-regex", "R", "", "Custom regex to extract coverage value from test command output")
+	f.StringVarP(&opt.language, "language", "l", "", "Enables details and coverage for given language")
+	f.StringVarP(&opt.outfile, "output", "o", "rcc-output.html", "Plot/Graph html/json/png output filename")
+	f.StringVarP(&opt.tmpPath, "tmp", "t", os.TempDir(), "Temp directory path to use for history clones")
+	_ = f.Parse(os.Args[1:])
+	opt.argv = f.Args()
 	return opt
 }
 
@@ -129,8 +130,7 @@ func runRCC(args CliArgs) error {
 	}
 
 	log.Printf("Graph successfully written to: %s", args.outfile)
-	OpenAsNeeded(args.open, args.outfile)
-	return nil
+	return OpenAsNeeded(args.open, args.outfile)
 }
 
 func versionInfo() string {
