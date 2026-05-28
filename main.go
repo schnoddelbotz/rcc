@@ -30,116 +30,82 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:          "retrospective-code-coverage",
-	Short:        "Retrospectively build LoC and Coverage stats and display as graph",
-	Long:         `First argument can be local git repo to analyze, defaults to current workdir`,
-	RunE:         rootCmdRunE,
-	SilenceUsage: true,
+type CliArgs struct {
+	CoverI           bool
+	noCoverD         bool
+	noCoverU         bool
+	noEmbedChartJS   bool
+	noEmbedJSON      bool
+	open             bool
+	printDebug       bool
+	skipAutoDetect   bool
+	printVersionOnly bool
+
+	workers int
+
+	argv             []string
+	includeLanguages []string
+
+	coverIntegrationCmd string
+	coverUnitCmd        string
+	customCoverageRegex string
+	language            string
+	outfile             string
+	tmpPath             string
 }
 
 func main() {
-	log.SetFlags(0)
-	log.Printf("rcc %s", versionInfo())
-
-	flags := rootCmd.Flags()
-	flags.IntP("workers", "w", 5, "Number of workers")
-	flags.StringP("output", "o", "rcc-output.html", "Plot/Graph html/json/png output filename")
-	flags.StringP("tmp", "t", os.TempDir(), "Temp directory path to use for history clones")
-	flags.StringP("language", "l", "", "Enables details and coverage for given language")
-	flags.BoolP("debug", "d", false, "Enable debug output")
-	flags.BoolP("open", "O", false, "Open graph upon completion")
-	flags.BoolP("skip-autodetect", "s", false, "Disable language auto detection")
-	flags.StringSliceP("include-languages", "i", []string{}, "Explicitly list languages for LoC")
-	// only if -l ...:
-	flags.BoolP("no-cover-unit", "U", false, "Do not run unit tests (for given --language)")
-	flags.BoolP("cover-integration", "I", false, "Run integration tests (for given --language)")
-	flags.BoolP("no-cover-duration", "D", false, "Do not include duration for coverage runs in graph")
-	//
-	flags.StringP("cover-unit-cmd", "C", "", "Custom shell command for running unit tests")
-	flags.StringP("cover-integration-cmd", "X", "", "Custom shell command for running integration tests")
-	flags.StringP("cover-regex", "R", "", "Custom regex to extract coverage value from test command output")
-
-	flags.BoolP("html-no-embed-chartjs", "J", false, "Do not embed ChartJS into generated .html, but link it")
-	flags.BoolP("html-no-embed-json", "j", false, "Do not embed JSON data into generated .html, but link it")
-
-	err := rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
+	if err := runRCC(getCliArgs()); err != nil {
+		log.Fatal(err)
 	}
 }
 
-func rootCmdRunE(cmd *cobra.Command, args []string) error {
-	workers, _ := cmd.Flags().GetInt("workers")
-	outfile, _ := cmd.Flags().GetString("output")
-	language, _ := cmd.Flags().GetString("language")
-	tmpPath, _ := cmd.Flags().GetString("tmp")
-	printDebug, _ := cmd.Flags().GetBool("debug")
-	open, _ := cmd.Flags().GetBool("open")
-	noCoverU, _ := cmd.Flags().GetBool("no-cover-unit")
-	CoverI, _ := cmd.Flags().GetBool("cover-integration")
-	noCoverD, _ := cmd.Flags().GetBool("no-cover-duration")
-	includeLanguages, _ := cmd.Flags().GetStringSlice("include-languages")
-	skipAutoDetect, _ := cmd.Flags().GetBool("skip-autodetect")
-	noEmbedJSON, _ := cmd.Flags().GetBool("html-no-embed-json")
-	noEmbedChartJS, _ := cmd.Flags().GetBool("html-no-embed-chartjs")
-	coverUnitCmd, _ := cmd.Flags().GetString("cover-unit-cmd")
-	coverIntegrationCmd, _ := cmd.Flags().GetString("cover-integration-cmd")
-	customCoverageRegex, _ := cmd.Flags().GetString("cover-regex")
+func getCliArgs() CliArgs {
+	opt := CliArgs{}
+	pflag.BoolVarP(&opt.CoverI, "cover-integration", "I", false, "Run integration tests (for given --language)")
+	pflag.BoolVarP(&opt.noCoverD, "no-cover-duration", "D", false, "Do not include duration for coverage runs in graph")
+	pflag.BoolVarP(&opt.noCoverU, "no-cover-unit", "U", false, "Do not run unit tests (for given --language)")
+	pflag.BoolVarP(&opt.noEmbedChartJS, "html-no-embed-chartjs", "J", false, "Do not embed ChartJS into generated .html, but link it")
+	pflag.BoolVarP(&opt.noEmbedJSON, "html-no-embed-json", "j", false, "Do not embed JSON data into generated .html, but link it")
+	pflag.BoolVarP(&opt.open, "open", "O", false, "Open graph upon completion")
+	pflag.BoolVarP(&opt.printDebug, "debug", "d", false, "Enable debug output")
+	pflag.BoolVarP(&opt.printVersionOnly, "version", "v", false, "Print rcc version and exit")
+	pflag.BoolVarP(&opt.skipAutoDetect, "skip-autodetect", "s", false, "Disable language auto detection")
+	pflag.IntVarP(&opt.workers, "workers", "w", 5, "Number of workers")
+	pflag.StringSliceVarP(&opt.includeLanguages, "include-languages", "i", []string{}, "Explicitly list languages for LoC")
+	pflag.StringVarP(&opt.coverIntegrationCmd, "cover-integration-cmd", "X", "", "Custom shell command for running integration tests")
+	pflag.StringVarP(&opt.coverUnitCmd, "cover-unit-cmd", "C", "", "Custom shell command for running unit tests")
+	pflag.StringVarP(&opt.customCoverageRegex, "cover-regex", "R", "", "Custom regex to extract coverage value from test command output")
+	pflag.StringVarP(&opt.language, "language", "l", "", "Enables details and coverage for given language")
+	pflag.StringVarP(&opt.outfile, "output", "o", "rcc-output.html", "Plot/Graph html/json/png output filename")
+	pflag.StringVarP(&opt.tmpPath, "tmp", "t", os.TempDir(), "Temp directory path to use for history clones")
+	pflag.Parse()
+	opt.argv = pflag.Args()
+	return opt
+}
 
-	jobOpts := JobOptions{
-		RunColoc:      true,
-		RunColocTests: true,
-		IncludeLangs:  includeLanguages,
-		TmpPath:       tmpPath,
-		debug:         printDebug,
+func runRCC(args CliArgs) error {
+	log.SetFlags(0)
+	log.Printf("rcc %s", versionInfo())
+	if args.printVersionOnly {
+		return nil
 	}
 
 	repoPath, err := os.Getwd()
 	if err != nil {
 		return err
 	}
-	if len(args) > 0 {
-		repoPath = args[0]
+	if len(args.argv) > 0 {
+		repoPath = args.argv[0]
 	}
 
-	langdata := GetLanguage(language, skipAutoDetect, repoPath)
-	if langdata == nil {
+	language := GetLanguage(args.language, args.skipAutoDetect, repoPath)
+	if language == nil {
 		return fmt.Errorf("invalid --language; currently supported: Go,Python,Java - or leave blank for generic")
 	}
-	titleParts := ""
-	if coverUnitCmd != "" {
-		langdata.UnitTestCmd = coverUnitCmd
-	}
-	if coverIntegrationCmd != "" {
-		langdata.IntegrationTestCmd = coverIntegrationCmd
-	}
-	if customCoverageRegex != "" {
-		langdata.CoverageRegex = customCoverageRegex
-	}
-	if langdata.UnitTestCmd != "" && !noCoverU {
-		log.Printf("Coverage (unit tests): enabled, command: %s", langdata.UnitTestCmd)
-		jobOpts.runCoverUnit = true
-		titleParts = " + Coverage (Unit-Tests)"
-	}
-	if langdata.IntegrationTestCmd != "" && CoverI {
-		log.Printf("Coverage (integration tests): enabled, command: %s", langdata.IntegrationTestCmd)
-		jobOpts.runCoverIntegration = true
-		titleParts = " + Coverage (Integration-Tests)"
-	}
-	if (jobOpts.runCoverUnit || jobOpts.runCoverIntegration) && !noCoverD {
-		log.Println("Graphing of coverage test duration: enabled")
-		jobOpts.includeDuration = true
-		titleParts += " + Test Duration"
-	}
-	if jobOpts.runCoverUnit || jobOpts.runCoverIntegration {
-		log.Printf("Coverage output regex: %s", langdata.CoverageRegex)
-	}
-	log.Printf("LoC test exclusion regex: %s", langdata.TestfilesRegex)
 
 	repo, err := NewSourceRepository(repoPath)
 	if err != nil {
@@ -151,18 +117,19 @@ func rootCmdRunE(cmd *cobra.Command, args []string) error {
 	}
 
 	log.Printf("Running for %s on %d commits with %d workers, repoPath: %s",
-		langdata.Description, len(commits), workers, repoPath)
-	runner := NewRunner(repo, langdata, jobOpts)
-	runner.Run(workers, commits)
+		language.Description, len(commits), args.workers, repoPath)
+	jobOpts := getJobOptions(args, language)
+	runner := NewRunner(repo, language, jobOpts)
+	runner.Run(args.workers, commits)
 
-	title := fmt.Sprintf("%s LoC %s [%s]", filepath.Base(repoPath), titleParts, langdata.Description)
-	err = NewGraph(runner.StatData, title, outfile, langdata.GoclocName, jobOpts, !noEmbedJSON, !noEmbedChartJS).Create()
+	title := fmt.Sprintf("%s LoC %s [%s]", filepath.Base(repoPath), jobOpts.titleParts, language.Description)
+	err = NewGraph(runner.StatData, title, args.outfile, language.GoclocName, jobOpts, !args.noEmbedJSON, !args.noEmbedChartJS).Create()
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Graph successfully written to: %s", outfile)
-	OpenAsNeeded(open, outfile)
+	log.Printf("Graph successfully written to: %s", args.outfile)
+	OpenAsNeeded(args.open, args.outfile)
 	return nil
 }
 

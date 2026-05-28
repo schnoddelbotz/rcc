@@ -95,7 +95,6 @@ Fun project, WIP. Open tasks:
 - [ ] add option to disable LoC
 - [ ] add option to limit time git history --range (time/sha)
 - [ ] add cli flag: output png dimensions
-- [ ] drop cobra?
 - [ ] add option to create/use ramdisk for tmp git clones
 - [ ] improve test coverage m( ... and add graph as example here
 - [ ] add JSON --append mode, to extend an exist json ouput file (/w 1 or more commits, based on range)

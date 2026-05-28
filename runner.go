@@ -30,17 +30,6 @@ type Runner struct {
 	jobOptions    JobOptions
 }
 
-type JobOptions struct {
-	RunColoc            bool
-	RunColocTests       bool
-	runCoverUnit        bool
-	runCoverIntegration bool
-	includeDuration     bool
-	IncludeLangs        []string
-	TmpPath             string
-	debug               bool
-}
-
 type TestResult struct {
 	Coverage float32
 	Duration time.Duration
