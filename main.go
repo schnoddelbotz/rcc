@@ -26,7 +26,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"runtime/debug"
 	"time"
 
@@ -83,6 +82,19 @@ func getCliArgs() CliArgs {
 	f.StringVarP(&opt.language, "language", "l", "", "Enables details and coverage for given language")
 	f.StringVarP(&opt.outfile, "output", "o", "rcc-output.html", "Plot/Graph html/json/png output filename")
 	f.StringVarP(&opt.tmpPath, "tmp", "t", os.TempDir(), "Temp directory path to use for history clones")
+	f.Usage = func() {
+		fmt.Println("Retrospective Code Coverage (rcc)  walks a local git repo's history  and collects")
+		fmt.Println("lines of code (LoC) and test coverage statistics data for each commit on its way.")
+		fmt.Println("Collected data can be plotted as HTML (default)  or PNG  and be exported as JSON.")
+		fmt.Println("Without an  REPOSITORY  argument,  rcc will analyze the current directory's repo.")
+		fmt.Println("For more details, see https://github.com/schnoddelbotz/rcc")
+		fmt.Println()
+		fmt.Println("Usage:")
+		fmt.Println("  rcc [flags] [REPOSITORY]")
+		fmt.Println()
+		fmt.Println("Flags:")
+		fmt.Println(f.FlagUsages())
+	}
 	_ = f.Parse(os.Args[1:])
 	opt.argv = f.Args()
 	return opt
@@ -90,7 +102,7 @@ func getCliArgs() CliArgs {
 
 func runRCC(args CliArgs) error {
 	log.SetFlags(0)
-	log.Printf("rcc %s", versionInfo())
+	log.Print(version())
 	if args.printVersionOnly {
 		return nil
 	}
@@ -133,23 +145,10 @@ func runRCC(args CliArgs) error {
 	return OpenAsNeeded(args.open, args.outfile)
 }
 
-func versionInfo() string {
+func version() string {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
-		return "VersionUnknown"
+		return "rcc VersionUnknown"
 	}
-	gitrev := getBuildSetting(info, "vcs.revision")
-	if len(gitrev) == 40 {
-		gitrev = gitrev[:8]
-	}
-	return fmt.Sprintf("%s built %s (%s)", gitrev, getBuildSetting(info, "vcs.time"), runtime.Version())
-}
-
-func getBuildSetting(info *debug.BuildInfo, name string) string {
-	for _, v := range info.Settings {
-		if v.Key == name {
-			return v.Value
-		}
-	}
-	return "[?" + name + "?]"
+	return fmt.Sprintf("rcc %s (%s)", info.Main.Version, info.GoVersion)
 }
