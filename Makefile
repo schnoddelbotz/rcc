@@ -24,7 +24,7 @@ test:
 cross: lint test
 	GOARCH=arm64 GOOS=darwin  go build -ldflags '-w -s' -o rcc_darwin_arm64
 	GOARCH=amd64 GOOS=linux   go build -ldflags '-w -s' -o rcc_linux_amd64
-	GOARCH=amd64 GOOS=windows go build -ldflags '-w -s' -o rcc_windows_amd64
+	GOARCH=amd64 GOOS=windows go build -ldflags '-w -s' -o rcc_windows_amd64.exe
 
 coverage:
 	go test -race -coverprofile cover.out ./...
