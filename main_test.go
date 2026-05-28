@@ -28,7 +28,7 @@ func TestGetHelp(t *testing.T) {
 
 	_ = getCliArgs(pflag.ContinueOnError)
 
-	assert.Contains(t, buf.String(), "Retrospective Code Coverage (rcc)  walks a local git repo")
+	assert.Contains(t, buf.String(), "Retrospective Code Coverage (rcc) walks a local git repo")
 	assert.Contains(t, buf.String(), "-I, --cover-integration")
 }
 func TestGetVersionOnly(t *testing.T) {
