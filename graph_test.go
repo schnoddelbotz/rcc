@@ -34,6 +34,14 @@ var testEntry = StatDataEntry{
 	CoverageIntegration: 75.5,
 	UnitDuration:        time.Second,
 }
+var testGraph = &Graph{
+	jobOptions: JobOptions{
+		runCoverUnit:        true,
+		includeDuration:     true,
+		runCoverIntegration: true,
+	},
+	statData: &StatData{entries: []StatDataEntry{testEntry}},
+}
 
 func TestCreateGnuplotPNG(t *testing.T) {
 	testEntry2 := testEntry
@@ -89,4 +97,29 @@ func TestCreateChartjsJSON(t *testing.T) {
 	jsonFile, err := os.ReadFile(outfile)
 	require.NoError(t, err, "Should be able to read the JSON file")
 	assert.Contains(t, string(jsonFile), "{\"labels\":[\"2026-05-26 abc12345\"],\"datasets\":[{\"label\":\"Go\",", "File should contain expected JSON structure")
+}
+
+func TestChartjsCreateJSON(t *testing.T) {
+	data := testGraph.createJSON()
+
+	// testEntry has 3 columns + coverage U + coverage I + duration U + duration I = 7
+	assert.Equal(t, 7, len(data.Datasets))
+}
+
+func TestChartjsWriteJSONErrors(t *testing.T) {
+	testGraph.outfile = "/dev/forbidden"
+
+	data := testGraph.createJSON()
+	err := testGraph.writeJSONToFile(data)
+
+	assert.Contains(t, err.Error(), "operation not permitted")
+}
+
+func TestChartjsWriteHTMLErrors(t *testing.T) {
+	testGraph.outfile = "/dev/forbidden"
+
+	data := testGraph.createJSON()
+	err := testGraph.writeChartHTML(data, false, false)
+
+	assert.Contains(t, err.Error(), "operation not permitted")
 }

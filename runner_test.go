@@ -73,3 +73,24 @@ func TestRunTestError(t *testing.T) {
 
 	require.Error(t, result.Err)
 }
+
+func TestGetJobOptions(t *testing.T) {
+	cliArgs := CliArgs{
+		coverUnitCmd:        "testme.sh",
+		coverIntegrationCmd: "testi.sh",
+		customCoverageRegex: `\d+`,
+		doCoverIntegration:  true,
+	}
+	langdata := GetLanguage("Go", true, "/tmp")
+	require.NotNil(t, langdata)
+
+	opts := getJobOptions(cliArgs, langdata)
+
+	assert.Equal(t, "testme.sh", langdata.UnitTestCmd)
+	assert.Equal(t, "testi.sh", langdata.IntegrationTestCmd)
+	assert.Equal(t, `\d+`, langdata.CoverageRegex)
+	assert.Equal(t, true, opts.runCoverUnit)
+	assert.Equal(t, true, opts.runCoverIntegration)
+	assert.Contains(t, opts.titleParts, "Coverage (Unit-Tests)")
+	assert.Contains(t, opts.titleParts, "Coverage (Integration-Tests)")
+}

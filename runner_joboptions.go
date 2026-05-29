@@ -42,7 +42,7 @@ func getJobOptions(opts CliArgs, langdata *Language) JobOptions {
 	if langdata.IntegrationTestCmd != "" && opts.doCoverIntegration {
 		log.Printf("Coverage (integration tests): enabled, command: %s", langdata.IntegrationTestCmd)
 		jobOpts.runCoverIntegration = true
-		titleParts = " + Coverage (Integration-Tests)"
+		titleParts += " + Coverage (Integration-Tests)"
 	}
 	if (jobOpts.runCoverUnit || jobOpts.runCoverIntegration) && !opts.noCoverDuration {
 		log.Println("Graphing of coverage test duration: enabled")
