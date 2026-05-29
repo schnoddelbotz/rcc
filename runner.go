@@ -131,8 +131,8 @@ func (runner *Runner) startJobInputQueueWorker() {
 			stat.CoverageUnit = result.Coverage
 			stat.UnitDuration = result.Duration
 			if result.Err != nil || runner.jobOptions.debug {
-				log.Printf("test-unit@%s '%s' took %.2fs => %3.2f | Err: %s",
-					sha[0:8], runner.language.UnitTestCmd, result.Duration.Seconds(), result.Coverage, result.Err)
+				log.Printf("test-unit@%s took %.2fs => coverage %3.2f | Err: %s",
+					sha[0:8], result.Duration.Seconds(), result.Coverage, result.Err)
 			}
 		}
 
@@ -141,8 +141,8 @@ func (runner *Runner) startJobInputQueueWorker() {
 			stat.CoverageIntegration = result.Coverage
 			stat.IntegrationDuration = result.Duration
 			if result.Err != nil || runner.jobOptions.debug {
-				log.Printf("test-integration@%s '%s' took %.2fs => %3.2f | Err: %s",
-					sha[0:8], runner.language.IntegrationTestCmd, result.Duration.Seconds(), result.Coverage, result.Err)
+				log.Printf("test-integration@%s took %.2fs => coverage %3.2f | Err: %s",
+					sha[0:8], result.Duration.Seconds(), result.Coverage, result.Err)
 			}
 		}
 

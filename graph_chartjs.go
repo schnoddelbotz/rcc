@@ -124,6 +124,9 @@ func (g *Graph) writeChartHTML(data chartjsData, embedJSON, embedChartJS bool) e
 			firstCommit := g.statData.entries[0]
 			lastCommit := g.statData.entries[len(g.statData.entries)-1]
 			timespan := lastCommit.Date.Sub(firstCommit.Date)
+			if timespan.Abs().Hours() < 50*24 {
+				return "day"
+			}
 			if timespan.Abs().Hours() > 365*24 {
 				return "month"
 			}

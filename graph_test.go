@@ -51,7 +51,7 @@ func TestCreateGnuplotPNG(t *testing.T) {
 	tmpdir := t.TempDir()
 	outfile := filepath.Join(tmpdir, "test_graph.png")
 
-	graph := NewGraph(statData, "Test Graph", outfile, "Go", JobOptions{}, false, false)
+	graph := NewGraph(statData, "Test Graph", outfile, "Go", JobOptions{debug: true, runCoverUnit: true, runCoverIntegration: true}, false, false)
 	err := graph.Create()
 	require.NoError(t, err, "Create() should not return an error")
 

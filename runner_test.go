@@ -44,11 +44,14 @@ func TestRunnerAgainstSelf(t *testing.T) {
 	require.Nil(t, err)
 
 	runner := NewRunner(repo, lang, JobOptions{
-		runColoc:         true,
-		runColocTests:    true,
-		includeLanguages: []string{"Go"},
+		runColoc:            true,
+		runColocTests:       true,
+		runCoverUnit:        true,
+		runCoverIntegration: true,
+		includeLanguages:    []string{"Go"},
+		debug:               true,
 	})
-	runner.Run(5, []string{knownSHA})
+	runner.Run(5, []string{knownSHA, knownSHAFailsUnitTest})
 
 	require.NotNil(t, runner.StatData)
 	assert.Equal(t, 1, len(runner.StatData.entries))

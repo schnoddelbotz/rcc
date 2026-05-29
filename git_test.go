@@ -4,11 +4,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // testing against our git $self ... with this early (2nd) commit
 var knownSHA = "cd36f87e39a9989096f210946a1ee1bc81a1d953"
+var knownSHAFailsUnitTest = "b785f264"
 
 func TestGetCommits(t *testing.T) {
 	r, err := NewSourceRepository(".")
@@ -35,4 +37,17 @@ func TestLocalClone(t *testing.T) {
 	commits, err := clone.GetCommits(time.Time{}, time.Now(), 1, "main")
 	require.Nil(t, err)
 	require.Contains(t, commits, knownSHA)
+}
+
+func TestLocalCloneFails(t *testing.T) {
+	r, err := NewSourceRepository(".")
+	require.Nil(t, err)
+	_, err = r.LocalClone("/dev/null", "123")
+	assert.ErrorContains(t, err, "copy failed")
+
+	// // tmp := t.TempDir()
+	src := &SourceRepository{}
+	// require.Nil(t, err)
+	_, err = src.LocalClone(t.TempDir(), "123")
+	require.ErrorContains(t, err, "reference not found")
 }
