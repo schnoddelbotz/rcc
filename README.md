@@ -50,6 +50,10 @@ Assuming a Go project in current working directory, to run LoC and unit test cov
 rcc
 ```
 
+Example output for the first month of rcc's own repository history (browser screenshot):
+
+![Screenshot of rcc-generated graph in a browser.](resources/_examples/rcc-chartjs.png)
+
 This will produce the default graph format (`rcc-output.html`).
 Should the project language not be specified and auto-detection fail, `rcc` will only analyse LoC.
 
@@ -100,16 +104,14 @@ rcc -A 2025-01-01 -Z 2025-12-31 -E 100 -U
   - [chartjs-adapter-moment](https://github.com/chartjs/chartjs-adapter-moment) embedded, for time scale
   - [Moment.js](https://momentjs.com/) embedded, for readable dates / time scale
 
-To render PNG graphs, rcc relies on a locally installed [gnuplot](http://www.gnuplot.info/).
-
 ## background & related tools
 
 rcc was originally born in 2025 as shell script (using gnuplot and gocloc), to monitor development of a single project.
 Primary goal of the re-implentation in Go was to (have fun and) make it more universally usable and faster.
+Both were created with the intension to sensitize (co-)devs to maintenance cost vs LoC and importance of test coverage.
 
 There are obviously many similar tools out there, offering different perspectives; I first heard
 about scc when reading [55,041,902 Lines of Code](https://planet.kde.org/cornelius-schumacher-2026-05-17-55-041-902-lines-of-code/).
-
 The [scc](https://github.com/boyter/scc#background) project has an extensive list of similar projects.
 You may want to take a look at scc itself for git insight reports, which rcc does not offer in that form.
 
@@ -118,9 +120,9 @@ You may want to take a look at scc itself for git insight reports, which rcc doe
 Fun project, WIP. Open tasks:
 
 - [ ] fix: --branch option required; uses hard-coded "main" :/
+- [ ] add --list-languages / gocloc + rcc (auto-detect -> test commands)
 - [ ] add option to disable LoC
 - [ ] add cli flag: output png dimensions
-- [ ] improve test coverage m( ... and add graph as example here
 - [ ] add JSON --append mode, to extend an exist json ouput file (/w 1 or more commits, based on range)
 
 ## license
