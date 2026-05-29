@@ -2,16 +2,14 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"os"
-	"time"
 
 	"github.com/schnoddelbotz/rcc/resources"
 )
 
 type chartjsData struct {
-	Labels   []string         `json:"labels"`
+	Labels   []int64          `json:"labels"`
 	Datasets []chartjsDataset `json:"datasets"`
 }
 type chartjsDataset struct {
@@ -28,9 +26,9 @@ func (g *Graph) CreateChartJS(embedJSON, embedChartJS, onlyJSON bool) error {
 }
 
 func (g *Graph) createJSON() chartjsData {
-	labels := []string{}
+	labels := []int64{}
 	for _, commit := range g.statData.entries {
-		labels = append(labels, fmt.Sprintf("%s %s", commit.Date.Format(time.DateOnly), commit.sha[:8]))
+		labels = append(labels, commit.Date.UnixMilli())
 	}
 	datasets := []chartjsDataset{}
 	for _, lang := range g.statData.languages() {
@@ -115,6 +113,8 @@ func (g *Graph) writeChartHTML(data chartjsData, embedJSON, embedChartJS bool) e
 		"embedJSON":       func() bool { return embedJSON },
 		"embedChartJS":    func() bool { return embedChartJS },
 		"chartJS":         func() template.JS { return template.JS(resources.ChartJS) },
+		"momentJS":        func() template.JS { return template.JS(resources.MomentJS) },
+		"chartJSAdapter":  func() template.JS { return template.JS(resources.ChartJSAdapterMoment) },
 		"chartData":       func() template.JS { return template.JS(chartjson) },
 		"includeCoverage": func() bool { return g.jobOptions.runCoverUnit || g.jobOptions.runCoverIntegration },
 	}

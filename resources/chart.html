@@ -5,6 +5,8 @@
 {{if embedChartJS}}
 <script>
   {{chartJS}}
+  {{momentJS}}
+  {{chartJSAdapter}}
 </script>
 {{else}}
 <script src="chart.js"></script>
@@ -31,6 +33,14 @@
       }
     },
     scales: {
+      x: {
+        // https://www.chartjs.org/docs/latest/axes/cartesian/time.html
+        type: 'time',
+        parsing: false,
+        time: {
+          unit: 'week'
+        },
+      },
       y: {
         type: 'linear',
         display: true,
