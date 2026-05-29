@@ -53,9 +53,9 @@ rcc
 This will produce the default graph format (`rcc-output.html`).
 Should the project language not be specified and auto-detection fail, `rcc` will only analyse LoC.
 
-Overview of currently supported flags to influence `rcc` behaviour:
+Overview of currently supported flags to influence `rcc` behaviour (`rcc --help`):
 
-```bash
+```
 Flags:
   -E, --commits-every int              Only look at every Nth commit (default 1)
   -A, --commits-from time              Look at commits since date (default 0)
@@ -75,22 +75,43 @@ Flags:
   -o, --output string                  Output file (default "rcc-output.html")
   -s, --skip-autodetect                Disable language auto detection
   -T, --timestamps                     Timestamp console log output
-  -t, --tmp string                     Temporary work directory (default "/tmp")
+  -t, --tmp string                     Temporary work directory (default OS tmp)
   -v, --version                        Print rcc version and exit
   -w, --workers int                    Number of workers (default 5)
 ```
 
-A more custom example - analyses the project at given path, opens the graph in PNG format upon
-completion, also runs integration tests and only analyses (and graphs) LoC for given languages:
+More usage examples:
 ```bash
+# analyse the project at given path, open the graph in PNG format upon completion,
+# also run integration tests and only analyse (and graph) LoC for given languages:
 rcc -OIi Go,JavaScript,HTML -o my.png /path/to/my/project
+
+# analyse one year of commits, only analyse every 100th commit, run no unit tests
+rcc -A 2025-01-01 -Z 2025-12-31 -E 100 -U
 ```
 
-## libraries used
+## libraries used / dependencies
 
-- [go-git](https://github.com/go-git/go-git) to analyse git history
+- [go-git](https://github.com/go-git/go-git) for all git operations
 - [gocloc](https://github.com/hhatto/gocloc) to get LoC data
-- [cobra](https://github.com/spf13/cobra) CLI command line interface
+- [pflag](https://github.com/spf13/pflag) CLI command line interface
+
+- [Chart.js](https://www.chartjs.org/) embedded, for HTML graphs
+  - [chartjs-adapter-moment](https://github.com/chartjs/chartjs-adapter-moment) embedded, for time scale
+  - [Moment.js](https://momentjs.com/) embedded, for readable dates / time scale
+
+To render PNG graphs, rcc relies on a locally installed [gnuplot](http://www.gnuplot.info/).
+
+## background & related tools
+
+rcc was originally born in 2025 as shell script (using gnuplot and gocloc), to monitor development of a single project.
+Primary goal of the re-implentation in Go was to (have fun and) make it more universally usable and faster.
+
+There are obviously many similar tools out there, offering different perspectives; I first heard
+about scc when reading [55,041,902 Lines of Code](https://planet.kde.org/cornelius-schumacher-2026-05-17-55-041-902-lines-of-code/).
+
+The [scc](https://github.com/boyter/scc#background) project has an extensive list of similar projects.
+You may want to take a look at scc itself for git insight reports, which rcc does not offer in that form.
 
 ## status / todo
 
@@ -99,7 +120,6 @@ Fun project, WIP. Open tasks:
 - [ ] fix: --branch option required; uses hard-coded "main" :/
 - [ ] add option to disable LoC
 - [ ] add cli flag: output png dimensions
-- [ ] add option to create/use ramdisk for tmp git clones
 - [ ] improve test coverage m( ... and add graph as example here
 - [ ] add JSON --append mode, to extend an exist json ouput file (/w 1 or more commits, based on range)
 

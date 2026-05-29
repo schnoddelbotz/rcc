@@ -141,8 +141,7 @@ func runRCC(args CliArgs) error {
 		return err
 	}
 
-	log.Printf("Running for %s on %d commits with %d workers, repoPath: %s",
-		language.Description, len(commits), args.workers, repoPath)
+	log.Printf("Running for %s on %d commits with %d workers", language.Description, len(commits), args.workers)
 	jobOpts := getJobOptions(args, language)
 	runner := NewRunner(repo, language, jobOpts)
 	runner.Run(args.workers, commits)
