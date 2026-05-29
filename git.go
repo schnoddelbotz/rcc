@@ -36,23 +36,35 @@ func (repo *SourceRepository) GetCommits(from, to time.Time, every int, branch s
 	if err != nil {
 		return hashes, err
 	}
-	// ... retrieves the commit history
-	cIter, err := repo.repo.Log(&git.LogOptions{From: ref.Hash(), Since: &from, Until: &to})
+	// retrieve the commit history. iterator delivers `git` cli order: latest first, backwards in history.
+	cIter, err := repo.repo.Log(&git.LogOptions{
+		From:  ref.Hash(),
+		Since: &from,
+		Until: &to,
+	})
 	if err != nil {
 		return hashes, err
 	}
-	// ... just iterates over the commits, only considers every Nth
-	var commitNumber = 0
+	// iterate over commits, only consider every Nth, always include 1st/latest/newest and oldest
+	var commitNumber = -1
+	var cIterLastCommit *object.Commit
+	var cIterLastProcessedCommit *object.Commit
 	err = cIter.ForEach(func(c *object.Commit) error {
+		cIterLastCommit = c
 		commitNumber++
 		if commitNumber%every != 0 {
 			return nil
 		}
+		cIterLastProcessedCommit = c
 		hashes = append(hashes, c.Hash.String())
 		return nil
 	})
 	if err != nil {
 		return hashes, err
+	}
+	if cIterLastCommit != cIterLastProcessedCommit {
+		// ensure timeline starts with oldest commit
+		hashes = append(hashes, cIterLastCommit.Hash.String())
 	}
 	return hashes, nil
 }
