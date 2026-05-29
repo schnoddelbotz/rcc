@@ -117,6 +117,18 @@ func (g *Graph) writeChartHTML(data chartjsData, embedJSON, embedChartJS bool) e
 		"chartJSAdapter":  func() template.JS { return template.JS(resources.ChartJSAdapterMoment) },
 		"chartData":       func() template.JS { return template.JS(chartjson) },
 		"includeCoverage": func() bool { return g.jobOptions.runCoverUnit || g.jobOptions.runCoverIntegration },
+		"timeUnit": func() string {
+			if len(g.statData.entries) < 1 {
+				return "day"
+			}
+			firstCommit := g.statData.entries[0]
+			lastCommit := g.statData.entries[len(g.statData.entries)-1]
+			timespan := lastCommit.Date.Sub(firstCommit.Date)
+			if timespan.Abs().Hours() > 365*24 {
+				return "month"
+			}
+			return "week"
+		},
 	}
 	tpl := template.Must(template.New("chartjs").Funcs(funcMap).Parse(resources.ChartHTML))
 

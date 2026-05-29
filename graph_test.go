@@ -96,7 +96,7 @@ func TestCreateChartjsJSON(t *testing.T) {
 	require.NoError(t, err, "Output file should exist")
 	jsonFile, err := os.ReadFile(outfile)
 	require.NoError(t, err, "Should be able to read the JSON file")
-	assert.Contains(t, string(jsonFile), "{\"labels\":[\"2026-05-26 abc12345\"],\"datasets\":[{\"label\":\"Go\",", "File should contain expected JSON structure")
+	assert.Contains(t, string(jsonFile), "{\"labels\":[1779753600000],\"datasets\":[{\"label\":\"Go\",", "File should contain expected JSON structure")
 }
 
 func TestChartjsCreateJSON(t *testing.T) {
