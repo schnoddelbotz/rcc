@@ -26,7 +26,7 @@ func NewSourceRepository(path string) (*SourceRepository, error) {
 	return &SourceRepository{path: path, repo: repo}, nil
 }
 
-func (repo *SourceRepository) GetCommits(from, to time.Time, branch string) ([]string, error) {
+func (repo *SourceRepository) GetCommits(from, to time.Time, every int, branch string) ([]string, error) {
 	// based on: https://github.com/go-git/go-git/blob/main/_examples/log/main.go
 	// get list of commits to process - limit using time range.
 	// list commits within range from any branch by default, or limit to one (or more?).
@@ -41,8 +41,13 @@ func (repo *SourceRepository) GetCommits(from, to time.Time, branch string) ([]s
 	if err != nil {
 		return hashes, err
 	}
-	// ... just iterates over the commits, printing it
+	// ... just iterates over the commits, only considers every Nth
+	var commitNumber = 0
 	err = cIter.ForEach(func(c *object.Commit) error {
+		commitNumber++
+		if commitNumber%every != 0 {
+			return nil
+		}
 		hashes = append(hashes, c.Hash.String())
 		return nil
 	})

@@ -44,7 +44,8 @@ type CliArgs struct {
 	skipAutoDetect     bool
 	printVersionOnly   bool
 
-	workers int
+	workers      int
+	commitsEvery int
 
 	argv             []string
 	includeLanguages []string
@@ -55,6 +56,9 @@ type CliArgs struct {
 	language            string
 	outfile             string
 	tmpPath             string
+
+	commitsFrom time.Time
+	commitsTo   time.Time
 }
 
 func main() {
@@ -78,6 +82,7 @@ func getCliArgs(errorHandling pflag.ErrorHandling) CliArgs {
 	f.BoolVarP(&opt.printVersionOnly, "version", "v", false, "Print rcc version and exit")
 	f.BoolVarP(&opt.skipAutoDetect, "skip-autodetect", "s", false, "Disable language auto detection")
 	f.IntVarP(&opt.workers, "workers", "w", 5, "Number of workers")
+	f.IntVarP(&opt.commitsEvery, "commits-every", "E", 1, "Only look at every Nth commit")
 	f.StringSliceVarP(&opt.includeLanguages, "include-languages", "i", []string{}, "Explicitly list languages for LoC")
 	f.StringVarP(&opt.coverIntegrationCmd, "cover-integration-cmd", "X", "", "Command for running integration tests")
 	f.StringVarP(&opt.coverUnitCmd, "cover-unit-cmd", "C", "", "Command for running unit tests")
@@ -85,6 +90,8 @@ func getCliArgs(errorHandling pflag.ErrorHandling) CliArgs {
 	f.StringVarP(&opt.language, "language", "l", "", "Set project language (default autodetect)")
 	f.StringVarP(&opt.outfile, "output", "o", "rcc-output.html", "Output file")
 	f.StringVarP(&opt.tmpPath, "tmp", "t", os.TempDir(), "Temporary work directory")
+	f.TimeVarP(&opt.commitsFrom, "commits-from", "A", time.UnixMilli(0), []string{time.DateOnly}, "Look at commits since date")
+	f.TimeVarP(&opt.commitsTo, "commits-to", "Z", time.Now(), []string{time.DateOnly}, "Look at commits until date")
 	f.Usage = func() {
 		log.Println("Retrospective Code Coverage (rcc) walks a local git repo's history  and collects")
 		log.Println("lines of code (LoC) and test coverage statistics data of each commit on its way.")
@@ -129,7 +136,7 @@ func runRCC(args CliArgs) error {
 	if err != nil {
 		return err
 	}
-	commits, err := repo.GetCommits(time.UnixMilli(0), time.Now(), "main") // FIXME branch / all
+	commits, err := repo.GetCommits(args.commitsFrom, args.commitsTo, args.commitsEvery, "main") // FIXME branch / all
 	if err != nil {
 		return err
 	}

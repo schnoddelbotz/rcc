@@ -57,6 +57,9 @@ Overview of currently supported flags to influence `rcc` behaviour:
 
 ```bash
 Flags:
+  -E, --commits-every int              Only look at every Nth commit (default 1)
+  -A, --commits-from time              Look at commits since date (default 0)
+  -Z, --commits-to time                Look at commits until date (default Now)
   -I, --cover-integration              Run integration tests
   -X, --cover-integration-cmd string   Command for running integration tests
   -R, --cover-regex string             Regex for coverage value extraction
@@ -95,7 +98,6 @@ Fun project, WIP. Open tasks:
 
 - [ ] fix: --branch option required; uses hard-coded "main" :/
 - [ ] add option to disable LoC
-- [ ] add option to limit time git history --range (time/sha)
 - [ ] add cli flag: output png dimensions
 - [ ] add option to create/use ramdisk for tmp git clones
 - [ ] improve test coverage m( ... and add graph as example here

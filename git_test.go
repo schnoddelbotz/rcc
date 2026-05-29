@@ -14,7 +14,7 @@ func TestGetCommits(t *testing.T) {
 	r, err := NewSourceRepository(".")
 	require.Nil(t, err)
 
-	commits, err := r.GetCommits(time.Time{}, time.Now(), "main")
+	commits, err := r.GetCommits(time.Time{}, time.Now(), 1, "main")
 
 	require.Nil(t, err)
 	require.Contains(t, commits, knownSHA)
@@ -32,7 +32,7 @@ func TestLocalClone(t *testing.T) {
 	// verify clone
 	clone, err := NewSourceRepository(testClonePath)
 	require.Nil(t, err)
-	commits, err := clone.GetCommits(time.Time{}, time.Now(), "main")
+	commits, err := clone.GetCommits(time.Time{}, time.Now(), 1, "main")
 	require.Nil(t, err)
 	require.Contains(t, commits, knownSHA)
 }
