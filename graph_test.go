@@ -123,3 +123,11 @@ func TestChartjsWriteHTMLErrors(t *testing.T) {
 
 	assert.Contains(t, err.Error(), "operation not permitted")
 }
+
+func TestGnuplotCreateScript(t *testing.T) {
+	script := testGraph.gnuplotCreateScript("/dev/null")
+
+	assert.Contains(t, script, "set y2range [0:100]")
+	assert.Contains(t, script, "'/dev/null' using 1:2 t 'Go' with linespoints")
+	assert.Contains(t, script, "'/dev/null' using 1:5 t 'UnitTestCoverage' axis x1y2 with linespoints")
+}

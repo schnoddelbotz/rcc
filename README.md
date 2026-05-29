@@ -57,22 +57,22 @@ Overview of currently supported flags to influence `rcc` behaviour:
 
 ```bash
 Flags:
-  -I, --cover-integration              Run integration tests (for given --language)
-  -X, --cover-integration-cmd string   Custom shell command for running integration tests
-  -R, --cover-regex string             Custom regex to extract coverage value from test command output
-  -C, --cover-unit-cmd string          Custom shell command for running unit tests
+  -I, --cover-integration              Run integration tests
+  -X, --cover-integration-cmd string   Command for running integration tests
+  -R, --cover-regex string             Regex for coverage value extraction
+  -C, --cover-unit-cmd string          Command for running unit tests
   -d, --debug                          Enable debug output
-  -J, --html-no-embed-chartjs          Do not embed ChartJS into generated .html, but link it
-  -j, --html-no-embed-json             Do not embed JSON data into generated .html, but link it
+  -J, --html-no-embed-chartjs          Don't embed ChartJS into generated .html
+  -j, --html-no-embed-json             Don't embed JSON into generated .html
   -i, --include-languages strings      Explicitly list languages for LoC
-  -l, --language string                Enables details and coverage for given language
-  -D, --no-cover-duration              Do not include duration for coverage runs in graph
-  -U, --no-cover-unit                  Do not run unit tests (for given --language)
-  -O, --open                           Open graph upon completion
-  -o, --output string                  Plot/Graph html/json/png output filename (default "rcc-output.html")
+  -l, --language string                Set project language (default autodetect)
+  -D, --no-cover-duration              Don't graph coverage duration
+  -U, --no-cover-unit                  Don't run unit tests
+  -O, --open                           Open --output file upon completion
+  -o, --output string                  Output file (default "rcc-output.html")
   -s, --skip-autodetect                Disable language auto detection
   -T, --timestamps                     Timestamp console log output
-  -t, --tmp string                     Temp directory path to use for history clones (default "/tmp")
+  -t, --tmp string                     Temporary work directory (default "/tmp")
   -v, --version                        Print rcc version and exit
   -w, --workers int                    Number of workers (default 5)
 ```

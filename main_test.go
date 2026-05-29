@@ -55,3 +55,9 @@ func TestRunInvalidRepoErrors(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "repository does not exist")
 }
+
+func TestOpenAsNeeded(t *testing.T) {
+	err := OpenAsNeeded(true, "/not/here")
+	// just ensures that calling open works - currently unable to catch open failure
+	assert.Nil(t, err)
+}
