@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -20,7 +21,6 @@ type Runner struct {
 	jobInputQueue chan string
 	resultQueue   chan StatDataEntry
 	repo          *SourceRepository
-	StatData      *StatData
 	jobsDone      atomic.Uint32
 	tmpDir        string // within tmpPath, will be removed at exit
 	wg            sync.WaitGroup
@@ -47,7 +47,7 @@ func NewRunner(repo *SourceRepository, language *Language, options JobOptions) *
 	}
 }
 
-func (runner *Runner) Run(workers int, hashes []string) {
+func (runner *Runner) Run(ctx context.Context, workers int, hashes []string) (*StatData, error) {
 	var err error
 	// create tmpDir root, shared by all workers
 	runner.tmpDir, err = os.MkdirTemp(runner.jobOptions.tmpPath, "rcc")
@@ -64,12 +64,14 @@ func (runner *Runner) Run(workers int, hashes []string) {
 	log.Printf("Runner started, using clone tmp dir: %s", runner.tmpDir)
 
 	// start workers consuming jobInputQueue
-	runner.startBackgroundWorkers(workers, hashes)
+	runner.startBackgroundWorkers(ctx, workers, hashes)
 	// feed jobs to jobInputQueue
 	for _, h := range hashes {
+		if err = ctx.Err(); err != nil {
+			break
+		}
 		runner.jobInputQueue <- h
 	}
-
 	// wait for all workers to complete
 	close(runner.jobInputQueue)
 	runner.wg.Wait()
@@ -77,13 +79,13 @@ func (runner *Runner) Run(workers int, hashes []string) {
 	<-runner.done
 
 	runner.sd.sort()
-	runner.StatData = &runner.sd
+	return &runner.sd, err
 }
 
-func (runner *Runner) startBackgroundWorkers(workers int, hashes []string) {
+func (runner *Runner) startBackgroundWorkers(ctx context.Context, workers int, hashes []string) {
 	for range workers {
 		runner.wg.Go(func() {
-			runner.startJobInputQueueWorker()
+			runner.startJobInputQueueWorker(ctx)
 		})
 	}
 
@@ -109,48 +111,56 @@ func (runner *Runner) startBackgroundWorkers(workers int, hashes []string) {
 	}()
 }
 
-func (runner *Runner) startJobInputQueueWorker() {
+func (runner *Runner) startJobInputQueueWorker(ctx context.Context) {
 	languages := gocloc.NewDefinedLanguages()
 
-	for sha := range runner.jobInputQueue {
-		// clone to clonePath with given hash
-		clonePath := filepath.Join(runner.tmpDir, sha)
-		commitTime, err := runner.repo.LocalClone(clonePath, sha)
-		if err != nil {
-			log.Printf("failed to clone: %s", err)
-			continue
-		}
-		stat := StatDataEntry{Date: commitTime, sha: sha}
-
-		if runner.jobOptions.runColoc {
-			stat.Loc = runner.runCloc(clonePath, languages)
-		}
-
-		if runner.jobOptions.runCoverUnit {
-			result := runTestCmd(clonePath, runner.language.UnitTestCmd, runner.language.CoverageRegex, runner.jobOptions.debug)
-			stat.CoverageUnit = result.Coverage
-			stat.UnitDuration = result.Duration
-			if result.Err != nil || runner.jobOptions.debug {
-				log.Printf("test-unit@%s took %.2fs => coverage %3.2f | Err: %s",
-					sha[0:8], result.Duration.Seconds(), result.Coverage, result.Err)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case sha, ok := <-runner.jobInputQueue:
+			if !ok {
+				return
 			}
-		}
-
-		if runner.jobOptions.runCoverIntegration {
-			result := runTestCmd(clonePath, runner.language.IntegrationTestCmd, runner.language.CoverageRegex, runner.jobOptions.debug)
-			stat.CoverageIntegration = result.Coverage
-			stat.IntegrationDuration = result.Duration
-			if result.Err != nil || runner.jobOptions.debug {
-				log.Printf("test-integration@%s took %.2fs => coverage %3.2f | Err: %s",
-					sha[0:8], result.Duration.Seconds(), result.Coverage, result.Err)
+			// clone to clonePath with given hash
+			clonePath := filepath.Join(runner.tmpDir, sha)
+			commitTime, err := runner.repo.LocalClone(clonePath, sha)
+			if err != nil {
+				log.Printf("failed to clone: %s", err)
+				continue
 			}
-		}
+			stat := StatDataEntry{Date: commitTime, sha: sha}
 
-		if err := os.RemoveAll(clonePath); err != nil {
-			log.Printf("failed to remove clone %s", clonePath)
-		}
+			if runner.jobOptions.runColoc {
+				stat.Loc = runner.runCloc(clonePath, languages)
+			}
 
-		runner.resultQueue <- stat
+			if runner.jobOptions.runCoverUnit {
+				result := runTestCmd(clonePath, runner.language.UnitTestCmd, runner.language.CoverageRegex, runner.jobOptions.debug)
+				stat.CoverageUnit = result.Coverage
+				stat.UnitDuration = result.Duration
+				if result.Err != nil || runner.jobOptions.debug {
+					log.Printf("test-unit@%s took %.2fs => coverage %3.2f | Err: %s",
+						sha[0:8], result.Duration.Seconds(), result.Coverage, result.Err)
+				}
+			}
+
+			if runner.jobOptions.runCoverIntegration {
+				result := runTestCmd(clonePath, runner.language.IntegrationTestCmd, runner.language.CoverageRegex, runner.jobOptions.debug)
+				stat.CoverageIntegration = result.Coverage
+				stat.IntegrationDuration = result.Duration
+				if result.Err != nil || runner.jobOptions.debug {
+					log.Printf("test-integration@%s took %.2fs => coverage %3.2f | Err: %s",
+						sha[0:8], result.Duration.Seconds(), result.Coverage, result.Err)
+				}
+			}
+
+			if err := os.RemoveAll(clonePath); err != nil {
+				log.Printf("failed to remove clone %s", clonePath)
+			}
+
+			runner.resultQueue <- stat
+		}
 	}
 }
 

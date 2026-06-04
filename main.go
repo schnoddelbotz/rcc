@@ -22,9 +22,11 @@ THE SOFTWARE.
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime/debug"
 	"time"
@@ -141,13 +143,18 @@ func runRCC(args CliArgs) error {
 		return err
 	}
 
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 	log.Printf("Running for %s on %d commits with %d workers", language.Description, len(commits), args.workers)
 	jobOpts := getJobOptions(args, language)
 	runner := NewRunner(repo, language, jobOpts)
-	runner.Run(args.workers, commits)
+	statdata, err := runner.Run(ctx, args.workers, commits)
+	if err != nil {
+		return err
+	}
 
 	title := fmt.Sprintf("%s LoC %s [%s]", filepath.Base(repoPath), jobOpts.titleParts, language.Description)
-	err = NewGraph(runner.StatData, title, args.outfile, language.GoclocName, jobOpts, !args.noEmbedJSON, !args.noEmbedChartJS).Create()
+	err = NewGraph(statdata, title, args.outfile, language.GoclocName, jobOpts, !args.noEmbedJSON, !args.noEmbedChartJS).Create()
 	if err != nil {
 		return err
 	}

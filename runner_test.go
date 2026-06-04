@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,17 +52,18 @@ func TestRunnerAgainstSelf(t *testing.T) {
 		includeLanguages:    []string{"Go"},
 		debug:               true,
 	})
-	runner.Run(5, []string{knownSHA, knownSHAFailsUnitTest})
+	stats, err := runner.Run(context.Background(), 5, []string{knownSHA, knownSHAFailsUnitTest})
 
-	require.NotNil(t, runner.StatData)
-	assert.Equal(t, 1, len(runner.StatData.entries))
-	require.NotNil(t, runner.StatData.entries[0].Loc)
-	require.NotNil(t, runner.StatData.entries[0].Loc.Languages)
-	require.Equal(t, 2, len(runner.StatData.entries[0].Loc.Languages))
-	require.Contains(t, runner.StatData.entries[0].Loc.Languages, "Go")
-	require.Contains(t, runner.StatData.entries[0].Loc.Languages, "GoExcludingTests")
-	assert.Equal(t, int32(123), runner.StatData.entries[0].Loc.Languages["Go"].Code)
-	assert.Equal(t, int32(123), runner.StatData.entries[0].Loc.Languages["GoExcludingTests"].Code)
+	require.Nil(t, err)
+	require.NotNil(t, stats)
+	assert.Equal(t, 1, len(stats.entries))
+	require.NotNil(t, stats.entries[0].Loc)
+	require.NotNil(t, stats.entries[0].Loc.Languages)
+	require.Equal(t, 2, len(stats.entries[0].Loc.Languages))
+	require.Contains(t, stats.entries[0].Loc.Languages, "Go")
+	require.Contains(t, stats.entries[0].Loc.Languages, "GoExcludingTests")
+	assert.Equal(t, int32(123), stats.entries[0].Loc.Languages["Go"].Code)
+	assert.Equal(t, int32(123), stats.entries[0].Loc.Languages["GoExcludingTests"].Code)
 }
 
 func TestRunTestCmd(t *testing.T) {
