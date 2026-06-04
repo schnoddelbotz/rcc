@@ -124,6 +124,14 @@ func TestChartjsWriteHTMLErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "operation not permitted")
 }
 
+func TestChartUnsupportedFormat(t *testing.T) {
+	testGraph.outfile = "/tmp/anything.goes.not"
+
+	err := testGraph.Create()
+
+	assert.Contains(t, err.Error(), "unsupported output file")
+}
+
 func TestGnuplotCreateScript(t *testing.T) {
 	script := testGraph.gnuplotCreateScript("/dev/null")
 
