@@ -67,14 +67,14 @@ func TestRunnerAgainstSelf(t *testing.T) {
 }
 
 func TestRunTestCmd(t *testing.T) {
-	result := runTestCmd(t.TempDir(), "echo foobar 99.5%", `\d+.\d+`, true)
+	result := runTestCmd(context.Background(), t.TempDir(), "echo foobar 99.5%", `\d+.\d+`, true)
 
 	require.Nil(t, result.Err)
 	assert.Equal(t, float32(99.5), result.Coverage)
 }
 
 func TestRunTestError(t *testing.T) {
-	result := runTestCmd(t.TempDir(), "asdasdasd dasdasda", `\d+.\d+`, true)
+	result := runTestCmd(context.Background(), t.TempDir(), "asdasdasd dasdasda", `\d+.\d+`, true)
 
 	require.Error(t, result.Err)
 }

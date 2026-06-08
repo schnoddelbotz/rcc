@@ -136,7 +136,7 @@ func (runner *Runner) startJobInputQueueWorker(ctx context.Context) {
 			}
 
 			if runner.jobOptions.runCoverUnit {
-				result := runTestCmd(clonePath, runner.language.UnitTestCmd, runner.language.CoverageRegex, runner.jobOptions.debug)
+				result := runTestCmd(ctx, clonePath, runner.language.UnitTestCmd, runner.language.CoverageRegex, runner.jobOptions.debug)
 				stat.CoverageUnit = result.Coverage
 				stat.UnitDuration = result.Duration
 				if result.Err != nil || runner.jobOptions.debug {
@@ -146,7 +146,7 @@ func (runner *Runner) startJobInputQueueWorker(ctx context.Context) {
 			}
 
 			if runner.jobOptions.runCoverIntegration {
-				result := runTestCmd(clonePath, runner.language.IntegrationTestCmd, runner.language.CoverageRegex, runner.jobOptions.debug)
+				result := runTestCmd(ctx, clonePath, runner.language.IntegrationTestCmd, runner.language.CoverageRegex, runner.jobOptions.debug)
 				stat.CoverageIntegration = result.Coverage
 				stat.IntegrationDuration = result.Duration
 				if result.Err != nil || runner.jobOptions.debug {
@@ -204,10 +204,10 @@ func getLoc(languages *gocloc.DefinedLanguages, options *gocloc.ClocOptions, pat
 
 // runTestCmd executes tests in clonePath using command.
 // The shell command must run tests and print a coverage value, extractable via given pattern.
-func runTestCmd(clonePath, command, pattern string, debug bool) TestResult {
+func runTestCmd(ctx context.Context, clonePath, command, pattern string, debug bool) TestResult {
 	start := time.Now()
 
-	cmd := exec.Command("sh", "-c", command)
+	cmd := exec.CommandContext(ctx, "sh", "-c", command)
 	cmd.Dir = clonePath
 	output, err := cmd.Output()
 	if err != nil && debug {
